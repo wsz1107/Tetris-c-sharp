@@ -1,35 +1,44 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Diagnostics;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace teris
 {
     public partial class Form1 : Form
     {
-        public List<Point> puzzlesPos=new List<Point>();
+        public Point puzzlesPos;
         public RectPuzzle rp;
-        public int FallSpeed=25;
+        public int FallSpeed = 20;
+        public int LengthOfCell = 20;
+        private List<string> keying = new List<string>();
+
+        private int topOfPlayboard = 0;
+        private int bottomOfPlayboard = 400;
+        private int leftOfPlayboard = 0;
+        private int rightOfPlayboard = 200;
 
         public Form1()
         {
             InitializeComponent();
-            puzzlesPos.Add(new Point(100, 100));
-            for(int i = 0; i < puzzlesPos.Count; i++)
-            {
-                rp = new RectPuzzle(puzzlesPos[i]);
-            }
+            puzzlesPos = new Point(100, 100);
+
+            //rp = RectPuzzle(puzzlesPos);
             timer1.Enabled = true;
+            timer2.Enabled = true;
         }
 
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
+            //Main playboard
+            int widthOfPen = 3;
+
+
+            Pen grayPen = new Pen(Color.Gray, widthOfPen);
+            e.Graphics.DrawLine(grayPen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
+
+            rp = new RectPuzzle(puzzlesPos);
             SolidBrush blueBrush = new SolidBrush(Color.Blue);
             e.Graphics.FillPolygon(blueBrush, rp.points);
 
@@ -37,26 +46,57 @@ namespace teris
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            //Debug.WriteLine(1);
-            for (int i=0; i < puzzlesPos.Count; i++)
-            {
-                var entry = puzzlesPos[i];
-                entry.Y+=FallSpeed;
-                puzzlesPos[i] = entry;
-                Debug.WriteLine(puzzlesPos[i].Y);
-            }
-            
+            //Draw falling puzzule
+            var entry = puzzlesPos;
+            entry.Y += FallSpeed;
+            puzzlesPos = entry;
+            //Debug.WriteLine(puzzlesPos.Y);
             pictureBox1.Invalidate();
+
+
+
+        }
+
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            //Control falling puzzle
+            if (keying.Contains("Left") && puzzlesPos.X > leftOfPlayboard)
+            {
+                puzzlesPos.X -= LengthOfCell;
+                Debug.WriteLine(puzzlesPos.X);
+            }
+            if (keying.Contains("Right") && puzzlesPos.X + 2 * LengthOfCell < rightOfPlayboard)
+            {
+                puzzlesPos.X += LengthOfCell;
+                Debug.WriteLine(puzzlesPos.X);
+            }
+            pictureBox1.Invalidate();
+        }
+
+        private void Form1_KeyUp(object sender, KeyEventArgs e)
+        {
+
+            keying.Remove(e.KeyCode.ToString());
+            Debug.WriteLine("Remove{0}", e.KeyCode.ToString());
+        }
+
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (!keying.Contains(e.KeyCode.ToString()))
+            {
+                keying.Add(e.KeyCode.ToString());
+                Debug.WriteLine("Add{0}", e.KeyCode.ToString());
+            }
         }
     }
     public class Puzzles
     {
         SolidBrush brush;
     }
-    public class RectPuzzle:Puzzles
+    public class RectPuzzle : Puzzles
     {
         public Point[] points;
-        int rectLength = 50;
+        int rectLength = 40;
         public RectPuzzle(Point _point)
         {
             this.points = new Point[]
@@ -68,5 +108,4 @@ namespace teris
             };
         }
     }
-
 }
