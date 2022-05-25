@@ -10,8 +10,13 @@ namespace teris
     {
         public Point puzzlesPos;
         public RectPuzzle rp;
+        public Puzzles puzzles;
         public int FallSpeed = 20;
         public int LengthOfCell = 20;
+
+        public int[,] Cells;//Save the color of cells
+        public int[] TopOfCells;//Save the height of every column
+
         private List<string> keying = new List<string>();
 
         private int topOfPlayboard = 0;
@@ -22,53 +27,141 @@ namespace teris
         public Form1()
         {
             InitializeComponent();
-            puzzlesPos = new Point(100, 100);
+            resetGame();
+        }
+        private void resetGame()
+        {
 
-            //rp = RectPuzzle(puzzlesPos);
+            //Intialize color of cells
+            Cells = new int[20, 10];
+            for (int i = 0; i < 20; i++)
+            {
+                for (int j = 0; j < 10; j++)
+                {
+                    Cells[i, j] = 0;
+                }
+            }
+
+            //Intialize top of columns
+            TopOfCells = new int[10];
+            for (int i = 0; i < 10; i++)
+            {
+                TopOfCells[i] = 400;
+            }
+
+            puzzlesPos = new Point(100, 200);
             timer1.Enabled = true;
             timer2.Enabled = true;
-        }
 
+            //test
+            for (int i = 2; i < 10; i++)
+            {
+                Cells[19, i] = 1;
+            }
+        }
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
-            //Main playboard
+            //Draw main playboard
             int widthOfPen = 3;
-
-
             Pen grayPen = new Pen(Color.Gray, widthOfPen);
             e.Graphics.DrawLine(grayPen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
 
-            rp = new RectPuzzle(puzzlesPos);
-            SolidBrush blueBrush = new SolidBrush(Color.Blue);
-            e.Graphics.FillPolygon(blueBrush, rp.points);
+            //Draw fallen puzzules
+            Pen redPen = new Pen(Color.Red, widthOfPen);
+            for (int i = 0; i < 20; i++)
+            {
+                for (int j = 0; j < 10; j++)
+                {
+                    if (Cells[i, j] == 1)
+                    {
+                        e.Graphics.DrawRectangle(redPen, j * LengthOfCell, i * LengthOfCell, LengthOfCell, LengthOfCell);
+                    }
+                }
+            }
 
+            //Draw falling puzzle
+            //rp = new RectPuzzle(puzzlesPos);
+
+            //Pen bluePen = new Pen(Color.Blue, 2);
+            //for (int i = 0; i < rp.points.Length; i++)
+            //{
+            //    e.Graphics.DrawRectangle(bluePen, rp.points[i].X, rp.points[i].Y, LengthOfCell, LengthOfCell);
+            //}
+
+
+            //Draw test puzzle
+            int testMode = 1;
+            puzzles = new ZPuzzles(puzzlesPos, testMode);
+            Pen blackPen = new Pen(Color.Black, 2);
+            for (int i = 0; i < puzzles.points.Length; i++)
+            {
+                e.Graphics.DrawRectangle(blackPen, puzzles.points[i].X, puzzles.points[i].Y, LengthOfCell, LengthOfCell);
+            }
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            //Draw falling puzzule
-            var entry = puzzlesPos;
-            entry.Y += FallSpeed;
-            puzzlesPos = entry;
+            //Puzzule falls
+            rp = new RectPuzzle(puzzlesPos);
+            bool flag = true;
+            for (int i = 0; i < rp.points.Length; i++)
+            {
+                if (rp.points[i].Y + LengthOfCell >= TopOfCells[rp.points[i].X / LengthOfCell])
+                {
+                    
+                    addStack();
+                    puzzlesPos = new Point(100, 100);
+                    rp = null;
+                    rp= new RectPuzzle(puzzlesPos);
+                    checkLine();
+                    flag = false;                  
+                }
+            }
+            if (flag)
+            {
+                puzzlesPos.Y += FallSpeed;
+            }
+
             //Debug.WriteLine(puzzlesPos.Y);
             pictureBox1.Invalidate();
-
-
-
         }
 
         private void timer2_Tick(object sender, EventArgs e)
         {
             //Control falling puzzle
-            if (keying.Contains("Left") && puzzlesPos.X > leftOfPlayboard)
+            rp = new RectPuzzle(puzzlesPos);
+            bool flag = true;
+            if (keying.Contains("Left"))
             {
-                puzzlesPos.X -= LengthOfCell;
-                Debug.WriteLine(puzzlesPos.X);
+                for (int i = 0; i < rp.points.Length; i++)
+                {
+                    if (rp.points[i].X <= leftOfPlayboard || Cells[rp.points[i].Y / LengthOfCell, rp.points[i].X / LengthOfCell - 1] != 0)
+                    {
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag)
+                {
+                    puzzlesPos.X -= LengthOfCell;
+                    Debug.WriteLine(puzzlesPos.X);
+                }
             }
-            if (keying.Contains("Right") && puzzlesPos.X + 2 * LengthOfCell < rightOfPlayboard)
+            if (keying.Contains("Right"))
             {
-                puzzlesPos.X += LengthOfCell;
-                Debug.WriteLine(puzzlesPos.X);
+                for (int i = 0; i < rp.points.Length; i++)
+                {
+                    if (rp.points[i].X + LengthOfCell >= rightOfPlayboard || Cells[rp.points[i].Y / LengthOfCell, rp.points[i].X / LengthOfCell + 1] != 0)
+                    {
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag)
+                {
+                    puzzlesPos.X += LengthOfCell;
+                    Debug.WriteLine(puzzlesPos.X);
+                }
             }
             pictureBox1.Invalidate();
         }
@@ -88,24 +181,283 @@ namespace teris
                 Debug.WriteLine("Add{0}", e.KeyCode.ToString());
             }
         }
+        private void addStack()
+        {
+            for (int i = 0; i < rp.points.Length; i++)
+            {
+                Cells[rp.points[i].Y / LengthOfCell, rp.points[i].X / LengthOfCell] = 1;
+                TopOfCells[rp.points[i].X / LengthOfCell] = Math.Min(TopOfCells[rp.points[i].X / LengthOfCell], rp.points[i].Y);
+            }
+        }
+        private void checkLine()
+        {
+            for (int i = 19; i >= 0; i--)
+            {
+                int res = 1;
+                for (int j = 0; j < 10; j++)
+                {
+                    res *= Cells[i, j];
+                }
+                if (res != 0)
+                {
+                    for (int k = i; k >0; k--)
+                    {
+                        for (int l = 0; l < 10; l++)
+                        {
+                            Cells[k, l] = 0;
+                            Cells[k, l] = Cells[k - 1, l];
+                        }
+                    }
+                }
+            }
+        }
     }
     public class Puzzles
     {
-        SolidBrush brush;
+        public const int LengthOfCell = 20;
+        public Point[] points;
+        public Pen Pen;
+        public int mode;
+
     }
     public class RectPuzzle : Puzzles
     {
-        public Point[] points;
-        int rectLength = 40;
+        Pen pen;
         public RectPuzzle(Point _point)
         {
             this.points = new Point[]
             {
                 new Point(_point.X, _point.Y),
-                new Point(_point.X+rectLength, _point.Y),
-                new Point(_point.X+rectLength,_point.Y+rectLength),
-                new Point (_point.X,_point.Y+rectLength)
+                new Point(_point.X+LengthOfCell, _point.Y),
+                new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell),
+                new Point(_point.X,_point.Y+LengthOfCell)
             };
+            pen = new Pen(Color.Blue, 3);
+
+        }
+    }
+    public class TrianglePuzzle : Puzzles
+    {
+        public TrianglePuzzle(Point _point, int _mode)
+        {
+            this.mode = _mode;
+            switch (mode)
+            {
+                case 0:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y)
+                    };
+                    break;
+                case 1:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 2:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 3:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+            }
+        }
+    }
+    public class ZPuzzles:Puzzles
+    {
+        public ZPuzzles(Point _point, int _mode)
+        {
+            this.mode = _mode;
+            switch (mode)
+            {
+                case 0:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 1:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+            }
+        }
+    }
+    public class XZPuzzles : Puzzles
+    {
+        public XZPuzzles(Point _point, int _mode)
+        {
+            this.mode = _mode;
+            switch (mode)
+            {
+                case 0:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X+LengthOfCell, _point.Y),
+                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 1:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
+                    };
+                    break;
+            }
+        }
+    }
+    public class LPuzzles : Puzzles
+    {
+        public LPuzzles(Point _point, int _mode)
+        {
+            this.mode = _mode;
+            switch (mode)
+            {
+                case 0:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 1:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X+LengthOfCell, _point.Y),
+                        new Point(_point.X-LengthOfCell, _point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 2:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 3:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y-LengthOfCell),
+                        new Point(_point.X-LengthOfCell,_point.Y)
+                    };
+                    break;
+            }
+        }
+
+    }
+    public class ZLPuzzles : Puzzles
+    {
+        public ZLPuzzles(Point _point, int _mode)
+        {
+            this.mode = _mode;
+            switch (mode)
+            {
+                case 0:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 1:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y-LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y)
+                    };
+                    break;
+                case 2:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 3:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X+LengthOfCell, _point.Y),
+                        new Point(_point.X-LengthOfCell, _point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell),
+                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell)
+                    };
+                    break;
+            }
+        }
+
+    }
+    public class StickPuzzles : Puzzles
+    {
+        public StickPuzzles(Point _point, int _mode)
+        {
+            this.mode = _mode;
+            switch (mode)
+            {
+                case 0:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell*2),
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
+                    break;
+                case 1:
+                    this.points = new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell*2, _point.Y),
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y)
+                    };
+                    break;
+            }
         }
     }
 }
