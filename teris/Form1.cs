@@ -9,10 +9,12 @@ namespace teris
     public partial class Form1 : Form
     {
         public Point puzzlesPos;
-        public RectPuzzle rp;
-        public Puzzles puzzles;
+        //public RectPuzzle rp;
+        public Puzzles testPuzzles;
+        public Puzzles otherPuzzles;
         public int FallSpeed = 20;
         public int LengthOfCell = 20;
+        public int FallingPuzzleMode = 0;
 
         public int[,] Cells;//Save the color of cells
         public int[] TopOfCells;//Save the height of every column
@@ -57,24 +59,26 @@ namespace teris
             for (int i = 2; i < 10; i++)
             {
                 Cells[19, i] = 1;
+                TopOfCells[i] = 380;
             }
         }
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
             //Draw main playboard
-            int widthOfPen = 3;
-            Pen grayPen = new Pen(Color.Gray, widthOfPen);
-            e.Graphics.DrawLine(grayPen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
+            int widthOfPlayboardFrame = 3;
+            Pen playboardFramePen = new Pen(Color.Gray, widthOfPlayboardFrame);
+            e.Graphics.DrawLine(playboardFramePen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
 
             //Draw fallen puzzules
-            Pen redPen = new Pen(Color.Red, widthOfPen);
+            int widthOfFallenPuzzles = 3;
+            Pen fallenPuzzlesPen = new Pen(Color.Red, widthOfFallenPuzzles);
             for (int i = 0; i < 20; i++)
             {
                 for (int j = 0; j < 10; j++)
                 {
                     if (Cells[i, j] == 1)
                     {
-                        e.Graphics.DrawRectangle(redPen, j * LengthOfCell, i * LengthOfCell, LengthOfCell, LengthOfCell);
+                        e.Graphics.DrawRectangle(fallenPuzzlesPen, j * LengthOfCell, i * LengthOfCell, LengthOfCell, LengthOfCell);
                     }
                 }
             }
@@ -90,29 +94,37 @@ namespace teris
 
 
             //Draw test puzzle
-            int testMode = 1;
-            puzzles = new ZPuzzles(puzzlesPos, testMode);
+            //int testMode = 2;
+            //testPuzzles = new TrianglePuzzle(puzzlesPos, testMode);
+            //Pen blackPen = new Pen(Color.Black, 2);
+            //for (int i = 0; i < testPuzzles.points.Length; i++)
+            //{
+            //    e.Graphics.DrawRectangle(blackPen, testPuzzles.points[i].X, testPuzzles.points[i].Y, LengthOfCell, LengthOfCell);
+            //}
+
+            //Draw other puzzle
+            //FallingPuzzleMode = 0;
+            otherPuzzles = new StickPuzzles(puzzlesPos, FallingPuzzleMode);
             Pen blackPen = new Pen(Color.Black, 2);
-            for (int i = 0; i < puzzles.points.Length; i++)
+            for (int i = 0; i < otherPuzzles.points.Length; i++)
             {
-                e.Graphics.DrawRectangle(blackPen, puzzles.points[i].X, puzzles.points[i].Y, LengthOfCell, LengthOfCell);
+                e.Graphics.DrawRectangle(blackPen, otherPuzzles.points[i].X, otherPuzzles.points[i].Y, LengthOfCell, LengthOfCell);
             }
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
             //Puzzule falls
-            rp = new RectPuzzle(puzzlesPos);
             bool flag = true;
-            for (int i = 0; i < rp.points.Length; i++)
+            for (int i = 0; i < otherPuzzles.points.Length; i++)
             {
-                if (rp.points[i].Y + LengthOfCell >= TopOfCells[rp.points[i].X / LengthOfCell])
+                if (otherPuzzles.points[i].Y + LengthOfCell >= TopOfCells[otherPuzzles.points[i].X / LengthOfCell])
                 {
                     
                     addStack();
                     puzzlesPos = new Point(100, 100);
-                    rp = null;
-                    rp= new RectPuzzle(puzzlesPos);
+                    otherPuzzles = null;
+                    otherPuzzles = new TrianglePuzzle(puzzlesPos,FallingPuzzleMode);
                     checkLine();
                     flag = false;                  
                 }
@@ -129,13 +141,13 @@ namespace teris
         private void timer2_Tick(object sender, EventArgs e)
         {
             //Control falling puzzle
-            rp = new RectPuzzle(puzzlesPos);
+            //rp = new RectPuzzle(puzzlesPos);
             bool flag = true;
             if (keying.Contains("Left"))
             {
-                for (int i = 0; i < rp.points.Length; i++)
+                for (int i = 0; i < otherPuzzles.points.Length; i++)
                 {
-                    if (rp.points[i].X <= leftOfPlayboard || Cells[rp.points[i].Y / LengthOfCell, rp.points[i].X / LengthOfCell - 1] != 0)
+                    if (otherPuzzles.points[i].X <= leftOfPlayboard || Cells[otherPuzzles.points[i].Y / LengthOfCell, otherPuzzles.points[i].X / LengthOfCell - 1] != 0)
                     {
                         flag = false;
                         break;
@@ -149,9 +161,9 @@ namespace teris
             }
             if (keying.Contains("Right"))
             {
-                for (int i = 0; i < rp.points.Length; i++)
+                for (int i = 0; i < otherPuzzles.points.Length; i++)
                 {
-                    if (rp.points[i].X + LengthOfCell >= rightOfPlayboard || Cells[rp.points[i].Y / LengthOfCell, rp.points[i].X / LengthOfCell + 1] != 0)
+                    if (otherPuzzles.points[i].X + LengthOfCell >= rightOfPlayboard || Cells[otherPuzzles.points[i].Y / LengthOfCell, otherPuzzles.points[i].X / LengthOfCell + 1] != 0)
                     {
                         flag = false;
                         break;
@@ -161,6 +173,45 @@ namespace teris
                 {
                     puzzlesPos.X += LengthOfCell;
                     Debug.WriteLine(puzzlesPos.X);
+                }
+            }
+            if (keying.Contains("Down"))
+            {
+                for(int i = 0; i < otherPuzzles.points.Length; i++)
+                {
+                    if(otherPuzzles.points[i].Y+LengthOfCell >= bottomOfPlayboard || Cells[otherPuzzles.points[i].Y / LengthOfCell+1, otherPuzzles.points[i].X/LengthOfCell] != 0)
+                    {
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag)
+                {
+                    puzzlesPos.Y += LengthOfCell;
+                }
+            }
+            if (keying.Contains("Up"))
+            {
+                for(int i=0;i< otherPuzzles.points.Length; i++)
+                {
+                    if((otherPuzzles.points[i].X <= leftOfPlayboard || Cells[otherPuzzles.points[i].Y / LengthOfCell, otherPuzzles.points[i].X / LengthOfCell - 1] != 0 || otherPuzzles.points[i].X + LengthOfCell >= rightOfPlayboard || Cells[otherPuzzles.points[i].Y / LengthOfCell, otherPuzzles.points[i].X / LengthOfCell + 1] != 0)
+                        ||(otherPuzzles.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[otherPuzzles.points[i].Y / LengthOfCell + 1, otherPuzzles.points[i].X / LengthOfCell] != 0))
+                    {
+                        flag =false;
+                        break;
+                    }
+                }
+                if (flag)
+                {
+                    if (FallingPuzzleMode == otherPuzzles.modeMaxIndex)
+                    {
+                        FallingPuzzleMode = 0;
+                    }
+                    else
+                    {
+                        FallingPuzzleMode++;
+                        Debug.WriteLine("Mode"+FallingPuzzleMode);
+                    }
                 }
             }
             pictureBox1.Invalidate();
@@ -183,10 +234,10 @@ namespace teris
         }
         private void addStack()
         {
-            for (int i = 0; i < rp.points.Length; i++)
+            for (int i = 0; i < otherPuzzles.points.Length; i++)
             {
-                Cells[rp.points[i].Y / LengthOfCell, rp.points[i].X / LengthOfCell] = 1;
-                TopOfCells[rp.points[i].X / LengthOfCell] = Math.Min(TopOfCells[rp.points[i].X / LengthOfCell], rp.points[i].Y);
+                Cells[otherPuzzles.points[i].Y / LengthOfCell, otherPuzzles.points[i].X / LengthOfCell] = 1;
+                TopOfCells[otherPuzzles.points[i].X / LengthOfCell] = Math.Min(TopOfCells[otherPuzzles.points[i].X / LengthOfCell], otherPuzzles.points[i].Y);
             }
         }
         private void checkLine()
@@ -218,6 +269,7 @@ namespace teris
         public Point[] points;
         public Pen Pen;
         public int mode;
+        public int modeMaxIndex;
 
     }
     public class RectPuzzle : Puzzles
@@ -241,6 +293,7 @@ namespace teris
         public TrianglePuzzle(Point _point, int _mode)
         {
             this.mode = _mode;
+            modeMaxIndex = 3;
             switch (mode)
             {
                 case 0:
@@ -287,6 +340,7 @@ namespace teris
         public ZPuzzles(Point _point, int _mode)
         {
             this.mode = _mode;
+            modeMaxIndex = 1;
             switch (mode)
             {
                 case 0:
@@ -315,6 +369,7 @@ namespace teris
         public XZPuzzles(Point _point, int _mode)
         {
             this.mode = _mode;
+            modeMaxIndex = 1;
             switch (mode)
             {
                 case 0:
@@ -343,15 +398,16 @@ namespace teris
         public LPuzzles(Point _point, int _mode)
         {
             this.mode = _mode;
+            modeMaxIndex = 3;
             switch (mode)
             {
                 case 0:
                     this.points = new Point[]
                     {
-                        new Point(_point.X, _point.Y-LengthOfCell),
-                        new Point(_point.X, _point.Y),
-                        new Point(_point.X,_point.Y+LengthOfCell),
-                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
+                        new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell)
                     };
                     break;
                 case 1:
@@ -360,16 +416,16 @@ namespace teris
                         new Point(_point.X+LengthOfCell, _point.Y),
                         new Point(_point.X-LengthOfCell, _point.Y+LengthOfCell),
                         new Point(_point.X,_point.Y+LengthOfCell),
-                        new Point(_point.X,_point.Y+LengthOfCell)
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
                     break;
                 case 2:
                     this.points = new Point[]
                     {
-                        new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y-LengthOfCell),
-                        new Point(_point.X,_point.Y),
-                        new Point(_point.X,_point.Y+LengthOfCell)
+                        new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
                     break;
                 case 3:
@@ -390,15 +446,16 @@ namespace teris
         public ZLPuzzles(Point _point, int _mode)
         {
             this.mode = _mode;
+            modeMaxIndex = 3;
             switch (mode)
             {
                 case 0:
                     this.points = new Point[]
                     {
-                        new Point(_point.X, _point.Y-LengthOfCell),
-                        new Point(_point.X, _point.Y),
-                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
-                        new Point(_point.X,_point.Y+LengthOfCell)
+                        new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X+LengthOfCell, _point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
                     break;
                 case 1:
@@ -413,10 +470,10 @@ namespace teris
                 case 2:
                     this.points = new Point[]
                     {
+                        new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y-LengthOfCell),
-                        new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
-                        new Point(_point.X,_point.Y),
-                        new Point(_point.X,_point.Y+LengthOfCell)
+                        new Point(_point.X-LengthOfCell,_point.Y),
+                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell)
                     };
                     break;
                 case 3:
@@ -425,7 +482,7 @@ namespace teris
                         new Point(_point.X+LengthOfCell, _point.Y),
                         new Point(_point.X-LengthOfCell, _point.Y+LengthOfCell),
                         new Point(_point.X,_point.Y+LengthOfCell),
-                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell)
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
                     break;
             }
@@ -437,6 +494,7 @@ namespace teris
         public StickPuzzles(Point _point, int _mode)
         {
             this.mode = _mode;
+            modeMaxIndex = 1;
             switch (mode)
             {
                 case 0:
