@@ -9,37 +9,43 @@ namespace teris
     public partial class Form1 : Form
     {
         public Point PuzzlePos;
-        public Point StartPos = new Point(100, 100);
-        public Puzzles CurrentPuzzle;
-        public const int FallSpeed = 20;
-        public int LengthOfCell = 20;
-        public int PuzzleFrameWidth = 3;
+        public Point StartPos = new Point(100, 40);
         public int FallingPuzzleMode = 0;
+        public Puzzles CurrentPuzzle;
+
+        public const int FallSpeed = 20;
+        public const int LengthOfCell = 20;
+        public const int PuzzleFrameWidth = 3;
 
         public int[,] Cells;//Save the colorIndex of fallen puzzles
+        public const int CellCountX = 10;
+        public const int CellCountY = 20;
 
         private List<string> keying = new List<string>();
 
-        private int topOfPlayboard = 0;
-        private int bottomOfPlayboard = 400;
-        private int leftOfPlayboard = 0;
-        private int rightOfPlayboard = 200;
+        private const int topOfPlayboard = 0;
+        private const int bottomOfPlayboard = LengthOfCell * CellCountY;
+        private const int leftOfPlayboard = 0;
+        private const int rightOfPlayboard = LengthOfCell * CellCountX;
 
         private Random random = new Random();
 
         public Form1()
         {
             InitializeComponent();
-            resetGame();
+            ResetGame();
         }
-        private void resetGame()
+        private void ResetGame()
         {
-
-            //Intialize color of cells
-            Cells = new int[20, 10];
-            for (int i = 0; i < 20; i++)
+            if (CurrentPuzzle != null)
             {
-                for (int j = 0; j < 10; j++)
+                CurrentPuzzle = null;
+            }
+            //Intialize color of cells
+            Cells = new int[CellCountY, CellCountX];
+            for (int i = 0; i < CellCountY; i++)
+            {
+                for (int j = 0; j < CellCountX; j++)
                 {
                     Cells[i, j] = 0;
                 }
@@ -48,13 +54,6 @@ namespace teris
             PuzzlePos = StartPos;
             timer1.Enabled = true;
             timer2.Enabled = true;
-
-            //test
-            for (int i = 2; i < 10; i++)
-            {
-                Cells[19, i] = 1;
-                Cells[18, i] = 1;
-            }
         }
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
@@ -65,14 +64,13 @@ namespace teris
 
             //Draw fallen puzzules
             int widthOfFallenPuzzles = 3;
-            Pen fallenPuzzlesPen = new Pen(Color.Red, widthOfFallenPuzzles);
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < CellCountY; i++)
             {
-                for (int j = 0; j < 10; j++)
+                for (int j = 0; j < CellCountX; j++)
                 {
                     if (Cells[i, j] != 0)
                     {
-                        e.Graphics.DrawRectangle(PuzzlePen(Cells[i,j]), j * LengthOfCell, i * LengthOfCell, LengthOfCell, LengthOfCell);
+                        e.Graphics.FillRectangle(PuzzleColor(Cells[i, j]), j * LengthOfCell, i * LengthOfCell, LengthOfCell, LengthOfCell);
                     }
                 }
             }
@@ -82,7 +80,7 @@ namespace teris
             {
                 for (int i = 0; i < CurrentPuzzle.points.Length; i++)
                 {
-                    e.Graphics.DrawRectangle(PuzzlePen(CurrentPuzzle.colorIndex), CurrentPuzzle.points[i].X, CurrentPuzzle.points[i].Y, LengthOfCell, LengthOfCell);
+                    e.Graphics.DrawRectangle(new Pen(PuzzleColor(CurrentPuzzle.colorIndex), widthOfFallenPuzzles), CurrentPuzzle.points[i].X, CurrentPuzzle.points[i].Y, LengthOfCell, LengthOfCell);
                 }
             }
 
@@ -98,15 +96,14 @@ namespace teris
 
             //Puzzle falls
             bool flag = true;
-            //var entry = CurrentPuzzle;
             for (int i = 0; i < CurrentPuzzle.points.Length; i++)
             {
                 if (CurrentPuzzle.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell + 1, CurrentPuzzle.points[i].X / LengthOfCell] != 0)
                 {
-                    addStack();
+                    AddStack();
                     PuzzlePos = StartPos;
                     CurrentPuzzle = null;
-                    checkLine();
+                    CheckLine();
                     flag = false;
                     break;
                 }
@@ -115,7 +112,6 @@ namespace teris
             {
                 PuzzlePos.Y += FallSpeed;
                 CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
-                //Debug.WriteLine(PuzzlePos.Y);
             }
             pictureBox1.Invalidate();
         }
@@ -138,7 +134,6 @@ namespace teris
                 {
                     PuzzlePos.X -= LengthOfCell;
                     CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
-                    //Debug.WriteLine(PuzzlePos.X);
                 }
             }
             if (keying.Contains("Right") && CurrentPuzzle != null)
@@ -164,10 +159,10 @@ namespace teris
                 {
                     if (CurrentPuzzle.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell + 1, CurrentPuzzle.points[i].X / LengthOfCell] != 0)
                     {
-                        addStack();
+                        AddStack();
                         PuzzlePos = StartPos;
                         CurrentPuzzle = null;
-                        checkLine();
+                        CheckLine();
                         flag = false;
                         break;
                     }
@@ -199,7 +194,6 @@ namespace teris
                     else
                     {
                         CurrentPuzzle.mode--;
-                        Debug.WriteLine("Mode" + CurrentPuzzle.mode);
                     }
                     CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
                 }
@@ -222,28 +216,28 @@ namespace teris
                 Debug.WriteLine("Add{0}", e.KeyCode.ToString());
             }
         }
-        private void addStack()
+        private void AddStack()
         {
             for (int i = 0; i < CurrentPuzzle.points.Length; i++)
             {
                 Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell] = CurrentPuzzle.colorIndex;
             }
         }
-        private void checkLine()
+        private void CheckLine()
         {
-            int i = 19;
+            int i = CellCountY - 1;
             while (i >= 0)
             {
                 int res = 1;
-                for(int j = 0; j < 10; j++)
+                for (int j = 0; j < CellCountX; j++)
                 {
                     res *= Cells[i, j];
                 }
                 if (res != 0)
                 {
-                    for(int k = i; k > 0; k--)
+                    for (int k = i; k > 0; k--)
                     {
-                        for(int l = 0; l < 10; l++)
+                        for (int l = 0; l < CellCountX; l++)
                         {
                             Cells[k, l] = 0;
                             Cells[k, l] = Cells[k - 1, l];
@@ -255,7 +249,7 @@ namespace teris
                     i--;
                 }
             }
-            testPrintCellsVal();
+            TestPrintCellsVal();
         }
         private Puzzles CreateFallingPuzzle(Point point, int ind)
         {
@@ -293,34 +287,34 @@ namespace teris
                     return null;
             }
         }
-        public Pen PuzzlePen(int ind)
+        public SolidBrush PuzzleColor(int ind)
         {
             switch (ind)
             {
                 case 1:
-                    return new Pen(Color.Yellow, PuzzleFrameWidth);
+                    return new SolidBrush(Color.Yellow);
                 case 2:
-                    return new Pen(Color.Violet, PuzzleFrameWidth);
+                    return new SolidBrush(Color.Violet);
                 case 3:
-                    return new Pen(Color.Red, PuzzleFrameWidth);
+                    return new SolidBrush(Color.Red);
                 case 4:
-                    return new Pen(Color.Green, PuzzleFrameWidth);
+                    return new SolidBrush(Color.Green);
                 case 5:
-                    return new Pen(Color.Orange, PuzzleFrameWidth);
+                    return new SolidBrush(Color.Orange);
                 case 6:
-                    return new Pen(Color.Blue, PuzzleFrameWidth);
+                    return new SolidBrush(Color.Blue);
                 case 7:
-                    return new Pen(Color.SkyBlue, PuzzleFrameWidth);
+                    return new SolidBrush(Color.SkyBlue);
                 default:
-                    return new Pen(Color.Black, PuzzleFrameWidth);
+                    return new SolidBrush(Color.Black);
             }
         }
 
-        private void testPrintCellsVal()
+        private void TestPrintCellsVal()
         {
-            for(int i = 19; i >= 0; i--)
+            for (int i = 19; i >= 0; i--)
             {
-                for(int j = 0; j < 10; j++)
+                for (int j = 0; j < 10; j++)
                 {
                     Debug.Write(Cells[i, j]);
                 }
@@ -331,9 +325,7 @@ namespace teris
     public abstract class Puzzles
     {
         public const int LengthOfCell = 20;
-        public const int FrameWidth = 3;
         public Point[] points;
-        public Pen pen;
         public int mode;
         public int modeMaxIndex;
         public int colorIndex;
@@ -346,7 +338,6 @@ namespace teris
         {
             this.mode = _mode;
             colorIndex = 1;
-            pen = new Pen(Color.Yellow, FrameWidth);
             this.points = new Point[]
             {
                 new Point(_point.X, _point.Y),
@@ -354,18 +345,16 @@ namespace teris
                 new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell),
                 new Point(_point.X,_point.Y+LengthOfCell)
             };
-            
+
         }
     }
     public class TrianglePuzzle : Puzzles
     {
-        
         public override void SetPoints(Point _point, int _mode)
         {
             this.mode = _mode;
             modeMaxIndex = 3;
             colorIndex = 2;
-            pen = new Pen(Color.Violet, FrameWidth);
             switch (mode)
             {
                 case 0:
@@ -414,7 +403,6 @@ namespace teris
             this.mode = _mode;
             modeMaxIndex = 1;
             colorIndex = 3;
-            pen = new Pen(Color.Red, FrameWidth);
             switch (mode)
             {
                 case 0:
@@ -445,7 +433,6 @@ namespace teris
             this.mode = _mode;
             modeMaxIndex = 1;
             colorIndex = 4;
-            pen = new Pen(Color.Green, FrameWidth);
             switch (mode)
             {
                 case 0:
@@ -476,7 +463,6 @@ namespace teris
             this.mode = _mode;
             modeMaxIndex = 3;
             colorIndex = 5;
-            pen = new Pen(Color.Orange, FrameWidth);
             switch (mode)
             {
                 case 0:
@@ -525,7 +511,6 @@ namespace teris
             this.mode = _mode;
             modeMaxIndex = 3;
             colorIndex = 6;
-            pen = new Pen(Color.Blue, FrameWidth);
             switch (mode)
             {
                 case 0:
@@ -558,7 +543,7 @@ namespace teris
                 case 3:
                     this.points = new Point[]
                     {
-                        new Point(_point.X+LengthOfCell, _point.Y),
+                        new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X-LengthOfCell, _point.Y+LengthOfCell),
                         new Point(_point.X,_point.Y+LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
@@ -575,7 +560,6 @@ namespace teris
             this.mode = _mode;
             modeMaxIndex = 1;
             colorIndex = 7;
-            pen = new Pen(Color.SkyBlue, FrameWidth);
             switch (mode)
             {
                 case 0:
