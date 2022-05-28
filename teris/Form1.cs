@@ -13,6 +13,7 @@ namespace teris
         public int FallingPuzzleMode = 0;
         public Puzzles CurrentPuzzle;
 
+
         public const int FallSpeed = 20;
         public const int LengthOfCell = 20;
         public const int PuzzleFrameWidth = 3;
@@ -29,7 +30,8 @@ namespace teris
         private const int rightOfPlayboard = LengthOfCell * CellCountX;
 
         private Random random = new Random();
-
+        private int score = 0;
+        private const int lineVal = 100;
         public Form1()
         {
             InitializeComponent();
@@ -41,6 +43,11 @@ namespace teris
             {
                 CurrentPuzzle = null;
             }
+
+            button1.Visible = false;
+            button1.Enabled = false;
+            label2.Visible = false;
+
             //Intialize color of cells
             Cells = new int[CellCountY, CellCountX];
             for (int i = 0; i < CellCountY; i++)
@@ -52,8 +59,10 @@ namespace teris
             }
 
             PuzzlePos = StartPos;
+            score = 0;
             timer1.Enabled = true;
             timer2.Enabled = true;
+            UpdateScore();
         }
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
@@ -63,7 +72,6 @@ namespace teris
             e.Graphics.DrawLine(playboardFramePen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
 
             //Draw fallen puzzules
-            int widthOfFallenPuzzles = 3;
             for (int i = 0; i < CellCountY; i++)
             {
                 for (int j = 0; j < CellCountX; j++)
@@ -80,10 +88,9 @@ namespace teris
             {
                 for (int i = 0; i < CurrentPuzzle.points.Length; i++)
                 {
-                    e.Graphics.DrawRectangle(new Pen(PuzzleColor(CurrentPuzzle.colorIndex), widthOfFallenPuzzles), CurrentPuzzle.points[i].X, CurrentPuzzle.points[i].Y, LengthOfCell, LengthOfCell);
+                    e.Graphics.DrawRectangle(new Pen(PuzzleColor(CurrentPuzzle.colorIndex), PuzzleFrameWidth), CurrentPuzzle.points[i].X, CurrentPuzzle.points[i].Y, LengthOfCell, LengthOfCell);
                 }
             }
-
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -92,6 +99,10 @@ namespace teris
             if (CurrentPuzzle == null)
             {
                 CurrentPuzzle = CreateFallingPuzzle(PuzzlePos, random.Next(7));
+            }
+            if (IsGameOver())
+            {
+                GameOver();
             }
 
             //Puzzle falls
@@ -103,15 +114,16 @@ namespace teris
                     AddStack();
                     PuzzlePos = StartPos;
                     CurrentPuzzle = null;
-                    CheckLine();
+                    CheckRow();
                     flag = false;
                     break;
                 }
             }
             if (flag)
             {
+                Debug.WriteLine(CurrentPuzzle.mode);
                 PuzzlePos.Y += FallSpeed;
-                CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
+                CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
             }
             pictureBox1.Invalidate();
         }
@@ -119,9 +131,9 @@ namespace teris
         private void timer2_Tick(object sender, EventArgs e)
         {
             //Control the falling puzzle
-            bool flag = true;
             if (keying.Contains("Left") && CurrentPuzzle != null)
             {
+                bool flag = true;
                 for (int i = 0; i < CurrentPuzzle.points.Length; i++)
                 {
                     if (CurrentPuzzle.points[i].X <= leftOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell - 1] != 0)
@@ -133,11 +145,12 @@ namespace teris
                 if (flag)
                 {
                     PuzzlePos.X -= LengthOfCell;
-                    CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
+                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
                 }
             }
             if (keying.Contains("Right") && CurrentPuzzle != null)
             {
+                bool flag = true;
                 for (int i = 0; i < CurrentPuzzle.points.Length; i++)
                 {
                     if (CurrentPuzzle.points[i].X + LengthOfCell >= rightOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell + 1] != 0)
@@ -149,12 +162,12 @@ namespace teris
                 if (flag)
                 {
                     PuzzlePos.X += LengthOfCell;
-                    CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
-                    Debug.WriteLine(PuzzlePos.X);
+                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
                 }
             }
             if (keying.Contains("Down") && CurrentPuzzle != null)
             {
+                bool flag = true;
                 for (int i = 0; i < CurrentPuzzle.points.Length; i++)
                 {
                     if (CurrentPuzzle.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell + 1, CurrentPuzzle.points[i].X / LengthOfCell] != 0)
@@ -162,7 +175,7 @@ namespace teris
                         AddStack();
                         PuzzlePos = StartPos;
                         CurrentPuzzle = null;
-                        CheckLine();
+                        CheckRow();
                         flag = false;
                         break;
                     }
@@ -170,16 +183,40 @@ namespace teris
                 if (flag)
                 {
                     PuzzlePos.Y += LengthOfCell;
-                    CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
-
+                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
                 }
             }
-            if (keying.Contains("Up") && CurrentPuzzle.mode != -1)
+            if (keying.Contains("Up") && CurrentPuzzle != null && CurrentPuzzle.mode != -1)
             {
-                for (int i = 0; i < CurrentPuzzle.points.Length; i++)
+                int nextMode;
+                Point[] nextModePoints;
+                bool flag = true;
+                if (CurrentPuzzle.mode == 0)
                 {
-                    if ((CurrentPuzzle.points[i].X <= leftOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell - 1] != 0 || CurrentPuzzle.points[i].X + LengthOfCell >= rightOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell + 1] != 0)
-                        || (CurrentPuzzle.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell + 1, CurrentPuzzle.points[i].X / LengthOfCell] != 0))
+                    nextMode = CurrentPuzzle.modeMaxIndex;
+                }
+                else
+                {
+                    nextMode = CurrentPuzzle.mode - 1;
+                }
+                nextModePoints = CurrentPuzzle.GetPoints(PuzzlePos, nextMode);
+                for (int i = 0; i < nextModePoints.Length; i++)
+                {
+                    Debug.WriteLine(nextModePoints[i]);
+                    if (nextModePoints[i].X < leftOfPlayboard
+                        || (nextModePoints[i].X > 0 && Cells[nextModePoints[i].Y / LengthOfCell, nextModePoints[i].X / LengthOfCell - 1] != 0))
+                    {
+                        flag = false;
+                        break;
+                    }
+                    if (nextModePoints[i].X + LengthOfCell > rightOfPlayboard
+                        || (nextModePoints[i].X / LengthOfCell + 1 < CellCountX && Cells[nextModePoints[i].Y / LengthOfCell, nextModePoints[i].X / LengthOfCell + 1] != 0))
+                    {
+                        flag = false;
+                        break;
+                    }
+                    if (nextModePoints[i].Y + LengthOfCell > bottomOfPlayboard
+                        || (nextModePoints[i].Y / LengthOfCell + 1 < CellCountY && Cells[nextModePoints[i].Y / LengthOfCell + 1, nextModePoints[i].X / LengthOfCell] != 0))
                     {
                         flag = false;
                         break;
@@ -187,15 +224,8 @@ namespace teris
                 }
                 if (flag)
                 {
-                    if (CurrentPuzzle.mode == 0)
-                    {
-                        CurrentPuzzle.mode = CurrentPuzzle.modeMaxIndex;
-                    }
-                    else
-                    {
-                        CurrentPuzzle.mode--;
-                    }
-                    CurrentPuzzle.SetPoints(PuzzlePos, CurrentPuzzle.mode);
+                    CurrentPuzzle.UpdatePoints(nextModePoints);
+                    CurrentPuzzle.UpdateMode(nextMode);
                 }
             }
             pictureBox1.Invalidate();
@@ -205,7 +235,6 @@ namespace teris
         {
 
             keying.Remove(e.KeyCode.ToString());
-            Debug.WriteLine("Remove{0}", e.KeyCode.ToString());
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
@@ -213,7 +242,6 @@ namespace teris
             if (!keying.Contains(e.KeyCode.ToString()))
             {
                 keying.Add(e.KeyCode.ToString());
-                Debug.WriteLine("Add{0}", e.KeyCode.ToString());
             }
         }
         private void AddStack()
@@ -223,8 +251,9 @@ namespace teris
                 Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell] = CurrentPuzzle.colorIndex;
             }
         }
-        private void CheckLine()
+        private void CheckRow()
         {
+            int combo = 0;
             int i = CellCountY - 1;
             while (i >= 0)
             {
@@ -235,6 +264,7 @@ namespace teris
                 }
                 if (res != 0)
                 {
+                    combo++;
                     for (int k = i; k > 0; k--)
                     {
                         for (int l = 0; l < CellCountX; l++)
@@ -249,39 +279,47 @@ namespace teris
                     i--;
                 }
             }
-            TestPrintCellsVal();
+            if (combo != 0)
+            {
+                score += (combo ^ combo) * lineVal;
+                UpdateScore();
+            }
         }
         private Puzzles CreateFallingPuzzle(Point point, int ind)
         {
             switch (ind)
             {
                 case 0:
-                    RectPuzzle rectP = new RectPuzzle();
-                    rectP.SetPoints(point, -1);
-                    return rectP;
+                    return new RectPuzzle(point,-1);
                 case 1:
                     TrianglePuzzle triangleP = new TrianglePuzzle();
-                    triangleP.SetPoints(point, 0);
+                    triangleP.UpdatePoints(triangleP.GetPoints(point, 0));
+                    triangleP.UpdateMode(0);
                     return triangleP;
                 case 2:
                     ZPuzzles zP = new ZPuzzles();
-                    zP.SetPoints(point, 0);
+                    zP.UpdatePoints(zP.GetPoints(point, 0));
+                    zP.UpdateMode(0);
                     return zP;
                 case 3:
                     XZPuzzles xzP = new XZPuzzles();
-                    xzP.SetPoints(point, 0);
+                    xzP.UpdatePoints(xzP.GetPoints(point, 0));
+                    xzP.UpdateMode(0);
                     return xzP;
                 case 4:
                     LPuzzles lP = new LPuzzles();
-                    lP.SetPoints(point, 0);
+                    lP.UpdatePoints(lP.GetPoints(point, 0));
+                    lP.UpdateMode(0);
                     return lP;
                 case 5:
                     XLPuzzles xlP = new XLPuzzles();
-                    xlP.SetPoints(point, 0);
+                    xlP.UpdatePoints(xlP.GetPoints(point, 0));
+                    xlP.UpdateMode(0);
                     return xlP;
                 case 6:
                     StickPuzzles stickP = new StickPuzzles();
-                    stickP.SetPoints(point, 0);
+                    stickP.UpdatePoints(stickP.GetPoints(point, 0));
+                    stickP.UpdateMode(0);
                     return stickP;
                 default:
                     return null;
@@ -321,265 +359,332 @@ namespace teris
                 Debug.Write(Environment.NewLine);
             }
         }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            ResetGame();
+        }
+        private void UpdateScore()
+        {
+            label1.Text = "Score:\n" + score;
+        }
+        private bool IsGameOver()
+        {
+            for (int i = 0; i < CurrentPuzzle.points.Length; i++)
+            {
+                if (Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell] != 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        } private void GameOver()
+        {
+            label2.Visible = true;
+            timer1.Enabled = false;
+            timer2.Enabled = false;
+            button1.Visible = true;
+            button1.Enabled = true;
+        }
     }
     public abstract class Puzzles
     {
         public const int LengthOfCell = 20;
         public Point[] points;
         public int mode;
-        public int modeMaxIndex;
-        public int colorIndex;
-        public abstract void SetPoints(Point _point, int _mode);
-
+        public abstract int modeMaxIndex { get; }
+        public abstract int colorIndex { get; }
+        public abstract Point[] GetPoints(Point _point, int _mode);
+        public void UpdatePoints(Point[] points)
+        {
+            this.points = points;
+        }
+        public void UpdateMode(int mode)
+        {
+            this.mode = mode;
+        }
     }
     public class RectPuzzle : Puzzles
     {
-        public override void SetPoints(Point _point, int _mode)
+        public override int colorIndex { get { return 1; } }
+        public override int modeMaxIndex { get { return 0; } }
+        public override Point[] GetPoints(Point _point, int _mode)
         {
-            this.mode = _mode;
-            colorIndex = 1;
-            this.points = new Point[]
+            return new Point[]
             {
                 new Point(_point.X, _point.Y),
                 new Point(_point.X+LengthOfCell, _point.Y),
                 new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell),
                 new Point(_point.X,_point.Y+LengthOfCell)
             };
-
+        }
+        public RectPuzzle(Point point, int mode)
+        {
+            UpdatePoints(GetPoints(point, mode));
+            UpdateMode(mode);
         }
     }
     public class TrianglePuzzle : Puzzles
     {
-        public override void SetPoints(Point _point, int _mode)
+        public override int colorIndex { get { return 2; } }
+        public override int modeMaxIndex { get { return 3; } }
+
+        public override Point[] GetPoints(Point _point, int _mode)
         {
-            this.mode = _mode;
-            modeMaxIndex = 3;
-            colorIndex = 2;
-            switch (mode)
+            switch (_mode)
             {
                 case 0:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X,_point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y)
                     };
-                    break;
                 case 1:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X,_point.Y),
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 2:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X, _point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y),
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 3:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y),
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
-                    break;
+                default:
+                    return new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X+LengthOfCell,_point.Y)
+                    };
             }
         }
     }
     public class ZPuzzles : Puzzles
     {
-        public override void SetPoints(Point _point, int _mode)
+        public override int colorIndex { get { return 3; } }
+        public override int modeMaxIndex { get { return 1; } }
+
+        public override Point[] GetPoints(Point _point, int _mode)
         {
-            this.mode = _mode;
-            modeMaxIndex = 1;
-            colorIndex = 3;
-            switch (mode)
+            switch (_mode)
             {
                 case 0:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X, _point.Y),
                         new Point(_point.X,_point.Y+LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 1:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y),
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
-                    break;
+                default:
+                    return new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
+                    };
             }
         }
     }
     public class XZPuzzles : Puzzles
     {
-        public override void SetPoints(Point _point, int _mode)
+        public override int colorIndex {  get { return 4; } }
+        public override int modeMaxIndex { get { return 1; } }
+
+        public override Point[] GetPoints(Point _point, int _mode)
         {
-            this.mode = _mode;
-            modeMaxIndex = 1;
-            colorIndex = 4;
-            switch (mode)
+            switch (_mode)
             {
                 case 0:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X, _point.Y),
                         new Point(_point.X+LengthOfCell, _point.Y),
                         new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 1:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
-                    break;
+                default:
+                    return new Point[]
+                    {
+                        new Point(_point.X, _point.Y),
+                        new Point(_point.X+LengthOfCell, _point.Y),
+                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
             }
         }
     }
     public class LPuzzles : Puzzles
     {
-        public override void SetPoints(Point _point, int _mode)
+        public override int colorIndex { get { return 5; } }
+        public override int modeMaxIndex { get { return 3; } }
+
+        public override Point[] GetPoints(Point _point, int _mode)
         {
-            this.mode = _mode;
-            modeMaxIndex = 3;
-            colorIndex = 5;
-            switch (mode)
+            switch (_mode)
             {
                 case 0:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 1:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X+LengthOfCell, _point.Y),
                         new Point(_point.X-LengthOfCell, _point.Y+LengthOfCell),
                         new Point(_point.X,_point.Y+LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 2:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 3:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y-LengthOfCell),
                         new Point(_point.X-LengthOfCell,_point.Y)
                     };
-                    break;
+                default:
+                    return new Point[]
+                    {
+                        new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X-LengthOfCell, _point.Y),
+                        new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
             }
         }
     }
     public class XLPuzzles : Puzzles
     {
-        public override void SetPoints(Point _point, int _mode)
+        public override int colorIndex { get { return 6; } }
+        public override int modeMaxIndex { get { return 3; } }
+
+        public override Point[] GetPoints(Point _point, int _mode)
         {
-            this.mode = _mode;
-            modeMaxIndex = 3;
-            colorIndex = 6;
-            switch (mode)
+            switch (_mode)
             {
                 case 0:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X+LengthOfCell, _point.Y),
                         new Point(_point.X,_point.Y+LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 1:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y-LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y)
                     };
-                    break;
                 case 2:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell, _point.Y-LengthOfCell),
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X-LengthOfCell,_point.Y),
                         new Point(_point.X-LengthOfCell,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 3:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X-LengthOfCell, _point.Y+LengthOfCell),
                         new Point(_point.X,_point.Y+LengthOfCell),
                         new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
                     };
-                    break;
+                default:
+                    return new Point[]
+                    {
+                        new Point(_point.X+LengthOfCell, _point.Y-LengthOfCell),
+                        new Point(_point.X+LengthOfCell, _point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell),
+                        new Point(_point.X+LengthOfCell,_point.Y+LengthOfCell)
+                    };
             }
         }
 
     }
     public class StickPuzzles : Puzzles
     {
-        public override void SetPoints(Point _point, int _mode)
+        public override int colorIndex { get { return 7; } }
+        public override int modeMaxIndex { get { return 1; } }
+        public override Point[] GetPoints(Point _point, int _mode)
         {
-            this.mode = _mode;
-            modeMaxIndex = 1;
-            colorIndex = 7;
-            switch (mode)
+            switch (_mode)
             {
                 case 0:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X, _point.Y-LengthOfCell*2),
                         new Point(_point.X, _point.Y-LengthOfCell),
                         new Point(_point.X,_point.Y),
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
-                    break;
                 case 1:
-                    this.points = new Point[]
+                    return new Point[]
                     {
                         new Point(_point.X-LengthOfCell*2, _point.Y),
                         new Point(_point.X-LengthOfCell, _point.Y),
                         new Point(_point.X,_point.Y),
                         new Point(_point.X+LengthOfCell,_point.Y)
                     };
-                    break;
+                default:
+                    return new Point[]
+                    {
+                        new Point(_point.X, _point.Y-LengthOfCell*2),
+                        new Point(_point.X, _point.Y-LengthOfCell),
+                        new Point(_point.X,_point.Y),
+                        new Point(_point.X,_point.Y+LengthOfCell)
+                    };
             }
         }
     }
