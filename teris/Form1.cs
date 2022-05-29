@@ -8,9 +8,11 @@ namespace teris
 {
     public partial class Form1 : Form
     {
-        private Point PuzzlePos;
-        private Point StartPos = new Point(100, 40);
-        private Puzzles CurrentPuzzle;
+        private Point CurrentPuzzlePos;
+        private readonly Point StartPos = new Point(100, 40);
+        private readonly Point NextPuzzlePos = new Point(230, 150);
+        private Puzzle CurrentPuzzle;
+        private Puzzle NextPuzzle;
 
         private const int FallSpeed = 20;
         private const int LengthOfCell = 20;
@@ -28,6 +30,7 @@ namespace teris
         private const int rightOfPlayboard = LengthOfCell * CellCountX;
 
         private Random random = new Random();
+        private int typeOfNextPuzzle = 0;
         private int score = 0;
         private const int lineVal = 100;
         public Form1()
@@ -57,7 +60,7 @@ namespace teris
             }
 
             //Start new game
-            PuzzlePos = StartPos;
+            CurrentPuzzlePos = StartPos;
             score = 0;
             timer1.Enabled = true;
             timer2.Enabled = true;
@@ -69,6 +72,15 @@ namespace teris
             int widthOfPlayboardFrame = 3;
             Pen playboardFramePen = new Pen(Color.Gray, widthOfPlayboardFrame);
             e.Graphics.DrawLine(playboardFramePen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
+
+            //Draw next puzzle
+            if (NextPuzzle != null)
+            {
+                for (int i = 0; i < NextPuzzle.points.Length; i++)
+                {
+                    e.Graphics.DrawRectangle(new Pen(PuzzleColor(NextPuzzle.colorIndex), PuzzleFrameWidth), NextPuzzle.points[i].X, NextPuzzle.points[i].Y, LengthOfCell, LengthOfCell);
+                }
+            }
 
             //Draw stack
             for (int i = 0; i < CellCountY; i++)
@@ -94,11 +106,21 @@ namespace teris
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            //Create a puzzle if not exist
+            //Create a standby puzzle if not exist
+            if (NextPuzzle == null)
+            {
+                typeOfNextPuzzle = random.Next(7);
+                NextPuzzle = CreateFallingPuzzle(NextPuzzlePos, typeOfNextPuzzle);
+            }
+
+            //Pass the standby puzzle to current puzzle if not exist. 
             if (CurrentPuzzle == null)
             {
-                CurrentPuzzle = CreateFallingPuzzle(PuzzlePos, random.Next(7));
+                CurrentPuzzle = CreateFallingPuzzle(CurrentPuzzlePos, typeOfNextPuzzle);
+                NextPuzzle = null;
             }
+
+
             if (IsGameOver())
             {
                 GameOver();
@@ -111,7 +133,7 @@ namespace teris
                 if (CurrentPuzzle.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell + 1, CurrentPuzzle.points[i].X / LengthOfCell] != 0)
                 {
                     AddStack();
-                    PuzzlePos = StartPos;
+                    CurrentPuzzlePos = StartPos;
                     CurrentPuzzle = null;
                     CheckRow();
                     flag = false;
@@ -120,8 +142,8 @@ namespace teris
             }
             if (flag)
             {
-                PuzzlePos.Y += FallSpeed;
-                CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
+                CurrentPuzzlePos.Y += FallSpeed;
+                CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(CurrentPuzzlePos, CurrentPuzzle.mode));
             }
             pictureBox1.Invalidate();
         }
@@ -142,8 +164,8 @@ namespace teris
                 }
                 if (flag)
                 {
-                    PuzzlePos.X -= LengthOfCell;
-                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
+                    CurrentPuzzlePos.X -= LengthOfCell;
+                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(CurrentPuzzlePos, CurrentPuzzle.mode));
                 }
             }
             if (keying.Contains("Right") && CurrentPuzzle != null)
@@ -159,8 +181,8 @@ namespace teris
                 }
                 if (flag)
                 {
-                    PuzzlePos.X += LengthOfCell;
-                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
+                    CurrentPuzzlePos.X += LengthOfCell;
+                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(CurrentPuzzlePos, CurrentPuzzle.mode));
                 }
             }
             if (keying.Contains("Down") && CurrentPuzzle != null)
@@ -171,7 +193,7 @@ namespace teris
                     if (CurrentPuzzle.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentPuzzle.points[i].Y / LengthOfCell + 1, CurrentPuzzle.points[i].X / LengthOfCell] != 0)
                     {
                         AddStack();
-                        PuzzlePos = StartPos;
+                        CurrentPuzzlePos = StartPos;
                         CurrentPuzzle = null;
                         CheckRow();
                         flag = false;
@@ -180,8 +202,8 @@ namespace teris
                 }
                 if (flag)
                 {
-                    PuzzlePos.Y += LengthOfCell;
-                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
+                    CurrentPuzzlePos.Y += LengthOfCell;
+                    CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(CurrentPuzzlePos, CurrentPuzzle.mode));
                 }
             }
             //Roll the puzzle
@@ -198,7 +220,7 @@ namespace teris
                 {
                     nextMode = CurrentPuzzle.mode - 1;
                 }
-                nextModePoints = CurrentPuzzle.GetPoints(PuzzlePos, nextMode);
+                nextModePoints = CurrentPuzzle.GetPoints(CurrentPuzzlePos, nextMode);
                 for (int i = 0; i < nextModePoints.Length; i++)
                 {
                     if (nextModePoints[i].X < leftOfPlayboard
@@ -287,7 +309,7 @@ namespace teris
                 UpdateScore();
             }
         }
-        private Puzzles CreateFallingPuzzle(Point point, int ind)
+        private Puzzle CreateFallingPuzzle(Point point, int ind)
         {
             switch (ind)
             {
@@ -296,15 +318,15 @@ namespace teris
                 case 1:
                     return new TrianglePuzzle(point,0);
                 case 2:
-                    return new ZPuzzles(point, 0);
+                    return new ZPuzzle(point, 0);
                 case 3:
-                    return new XZPuzzles(point, 0);
+                    return new XZPuzzle(point, 0);
                 case 4:
-                    return new LPuzzles(point, 0);
+                    return new LPuzzle(point, 0);
                 case 5:
-                    return new XLPuzzles(point, 0);
+                    return new XLPuzzle(point, 0);
                 case 6:
-                    return new StickPuzzles(point, 0);
+                    return new StickPuzzle(point, 0);
                 default:
                     return null;
             }
@@ -371,7 +393,7 @@ namespace teris
             button1.Enabled = true;
         }
     }
-    public abstract class Puzzles
+    public abstract class Puzzle
     {
         public const int LengthOfCell = 20;
         public Point[] points;
@@ -388,7 +410,7 @@ namespace teris
             this.mode = mode;
         }
     }
-    public class RectPuzzle : Puzzles
+    public class RectPuzzle : Puzzle
     {
         public override int colorIndex { get { return 1; } }
         public override int modeMaxIndex { get { return 0; } }
@@ -408,7 +430,7 @@ namespace teris
             UpdateMode(mode);
         }
     }
-    public class TrianglePuzzle : Puzzles
+    public class TrianglePuzzle : Puzzle
     {
         public override int colorIndex { get { return 2; } }
         public override int modeMaxIndex { get { return 3; } }
@@ -465,7 +487,7 @@ namespace teris
             UpdateMode(mode);
         }
     }
-    public class ZPuzzles : Puzzles
+    public class ZPuzzle : Puzzle
     {
         public override int colorIndex { get { return 3; } }
         public override int modeMaxIndex { get { return 1; } }
@@ -500,13 +522,13 @@ namespace teris
                     };
             }
         }
-        public ZPuzzles(Point point, int mode)
+        public ZPuzzle(Point point, int mode)
         {
             UpdatePoints(GetPoints(point, mode));
             UpdateMode(mode);
         }
     }
-    public class XZPuzzles : Puzzles
+    public class XZPuzzle : Puzzle
     {
         public override int colorIndex {  get { return 4; } }
         public override int modeMaxIndex { get { return 1; } }
@@ -541,13 +563,13 @@ namespace teris
                     };
             }
         }
-        public XZPuzzles(Point point, int mode)
+        public XZPuzzle(Point point, int mode)
         {
             UpdatePoints(GetPoints(point, mode));
             UpdateMode(mode);
         }
     }
-    public class LPuzzles : Puzzles
+    public class LPuzzle : Puzzle
     {
         public override int colorIndex { get { return 5; } }
         public override int modeMaxIndex { get { return 3; } }
@@ -598,13 +620,13 @@ namespace teris
                     };
             }
         }
-        public LPuzzles(Point point, int mode)
+        public LPuzzle(Point point, int mode)
         {
             UpdatePoints(GetPoints(point, mode));
             UpdateMode(mode);
         }
     }
-    public class XLPuzzles : Puzzles
+    public class XLPuzzle : Puzzle
     {
         public override int colorIndex { get { return 6; } }
         public override int modeMaxIndex { get { return 3; } }
@@ -655,14 +677,14 @@ namespace teris
                     };
             }
         }
-        public XLPuzzles(Point point, int mode)
+        public XLPuzzle(Point point, int mode)
         {
             UpdatePoints(GetPoints(point, mode));
             UpdateMode(mode);
         }
 
     }
-    public class StickPuzzles : Puzzles
+    public class StickPuzzle : Puzzle
     {
         public override int colorIndex { get { return 7; } }
         public override int modeMaxIndex { get { return 1; } }
@@ -696,7 +718,7 @@ namespace teris
                     };
             }
         }
-        public StickPuzzles(Point point, int mode)
+        public StickPuzzle(Point point, int mode)
         {
             UpdatePoints(GetPoints(point, mode));
             UpdateMode(mode);
