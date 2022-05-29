@@ -8,19 +8,17 @@ namespace teris
 {
     public partial class Form1 : Form
     {
-        public Point PuzzlePos;
-        public Point StartPos = new Point(100, 40);
-        public int FallingPuzzleMode = 0;
-        public Puzzles CurrentPuzzle;
+        private Point PuzzlePos;
+        private Point StartPos = new Point(100, 40);
+        private Puzzles CurrentPuzzle;
 
+        private const int FallSpeed = 20;
+        private const int LengthOfCell = 20;
+        private const int PuzzleFrameWidth = 3;
 
-        public const int FallSpeed = 20;
-        public const int LengthOfCell = 20;
-        public const int PuzzleFrameWidth = 3;
-
-        public int[,] Cells;//Save the colorIndex of fallen puzzles
-        public const int CellCountX = 10;
-        public const int CellCountY = 20;
+        private int[,] Cells;//Save the colorIndex of fallen puzzles
+        private const int CellCountX = 10;
+        private const int CellCountY = 20;
 
         private List<string> keying = new List<string>();
 
@@ -39,11 +37,11 @@ namespace teris
         }
         private void ResetGame()
         {
+            //Clear the screen
             if (CurrentPuzzle != null)
             {
                 CurrentPuzzle = null;
             }
-
             button1.Visible = false;
             button1.Enabled = false;
             label2.Visible = false;
@@ -58,6 +56,7 @@ namespace teris
                 }
             }
 
+            //Start new game
             PuzzlePos = StartPos;
             score = 0;
             timer1.Enabled = true;
@@ -71,7 +70,7 @@ namespace teris
             Pen playboardFramePen = new Pen(Color.Gray, widthOfPlayboardFrame);
             e.Graphics.DrawLine(playboardFramePen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
 
-            //Draw fallen puzzules
+            //Draw stack
             for (int i = 0; i < CellCountY; i++)
             {
                 for (int j = 0; j < CellCountX; j++)
@@ -121,7 +120,6 @@ namespace teris
             }
             if (flag)
             {
-                Debug.WriteLine(CurrentPuzzle.mode);
                 PuzzlePos.Y += FallSpeed;
                 CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
             }
@@ -186,6 +184,7 @@ namespace teris
                     CurrentPuzzle.UpdatePoints(CurrentPuzzle.GetPoints(PuzzlePos, CurrentPuzzle.mode));
                 }
             }
+            //Roll the puzzle
             if (keying.Contains("Up") && CurrentPuzzle != null && CurrentPuzzle.mode != -1)
             {
                 int nextMode;
@@ -202,7 +201,6 @@ namespace teris
                 nextModePoints = CurrentPuzzle.GetPoints(PuzzlePos, nextMode);
                 for (int i = 0; i < nextModePoints.Length; i++)
                 {
-                    Debug.WriteLine(nextModePoints[i]);
                     if (nextModePoints[i].X < leftOfPlayboard
                         || (nextModePoints[i].X > 0 && Cells[nextModePoints[i].Y / LengthOfCell, nextModePoints[i].X / LengthOfCell - 1] != 0))
                     {
@@ -244,6 +242,8 @@ namespace teris
                 keying.Add(e.KeyCode.ToString());
             }
         }
+
+        //Add value to the cells where the falling puzzle was to be
         private void AddStack()
         {
             for (int i = 0; i < CurrentPuzzle.points.Length; i++)
@@ -251,6 +251,8 @@ namespace teris
                 Cells[CurrentPuzzle.points[i].Y / LengthOfCell, CurrentPuzzle.points[i].X / LengthOfCell] = CurrentPuzzle.colorIndex;
             }
         }
+
+        //If the value of all cells in a row are not 0, clear the row and take in the upper row's value
         private void CheckRow()
         {
             int combo = 0;
@@ -281,7 +283,7 @@ namespace teris
             }
             if (combo != 0)
             {
-                score += (combo ^ combo) * lineVal;
+                score += (combo * combo) * lineVal;
                 UpdateScore();
             }
         }
@@ -292,40 +294,22 @@ namespace teris
                 case 0:
                     return new RectPuzzle(point,-1);
                 case 1:
-                    TrianglePuzzle triangleP = new TrianglePuzzle();
-                    triangleP.UpdatePoints(triangleP.GetPoints(point, 0));
-                    triangleP.UpdateMode(0);
-                    return triangleP;
+                    return new TrianglePuzzle(point,0);
                 case 2:
-                    ZPuzzles zP = new ZPuzzles();
-                    zP.UpdatePoints(zP.GetPoints(point, 0));
-                    zP.UpdateMode(0);
-                    return zP;
+                    return new ZPuzzles(point, 0);
                 case 3:
-                    XZPuzzles xzP = new XZPuzzles();
-                    xzP.UpdatePoints(xzP.GetPoints(point, 0));
-                    xzP.UpdateMode(0);
-                    return xzP;
+                    return new XZPuzzles(point, 0);
                 case 4:
-                    LPuzzles lP = new LPuzzles();
-                    lP.UpdatePoints(lP.GetPoints(point, 0));
-                    lP.UpdateMode(0);
-                    return lP;
+                    return new LPuzzles(point, 0);
                 case 5:
-                    XLPuzzles xlP = new XLPuzzles();
-                    xlP.UpdatePoints(xlP.GetPoints(point, 0));
-                    xlP.UpdateMode(0);
-                    return xlP;
+                    return new XLPuzzles(point, 0);
                 case 6:
-                    StickPuzzles stickP = new StickPuzzles();
-                    stickP.UpdatePoints(stickP.GetPoints(point, 0));
-                    stickP.UpdateMode(0);
-                    return stickP;
+                    return new StickPuzzles(point, 0);
                 default:
                     return null;
             }
         }
-        public SolidBrush PuzzleColor(int ind)
+        private SolidBrush PuzzleColor(int ind)
         {
             switch (ind)
             {
@@ -475,6 +459,11 @@ namespace teris
                     };
             }
         }
+        public TrianglePuzzle(Point point, int mode)
+        {
+            UpdatePoints(GetPoints(point, mode));
+            UpdateMode(mode);
+        }
     }
     public class ZPuzzles : Puzzles
     {
@@ -511,6 +500,11 @@ namespace teris
                     };
             }
         }
+        public ZPuzzles(Point point, int mode)
+        {
+            UpdatePoints(GetPoints(point, mode));
+            UpdateMode(mode);
+        }
     }
     public class XZPuzzles : Puzzles
     {
@@ -546,6 +540,11 @@ namespace teris
                         new Point(_point.X,_point.Y+LengthOfCell)
                     };
             }
+        }
+        public XZPuzzles(Point point, int mode)
+        {
+            UpdatePoints(GetPoints(point, mode));
+            UpdateMode(mode);
         }
     }
     public class LPuzzles : Puzzles
@@ -599,6 +598,11 @@ namespace teris
                     };
             }
         }
+        public LPuzzles(Point point, int mode)
+        {
+            UpdatePoints(GetPoints(point, mode));
+            UpdateMode(mode);
+        }
     }
     public class XLPuzzles : Puzzles
     {
@@ -651,6 +655,11 @@ namespace teris
                     };
             }
         }
+        public XLPuzzles(Point point, int mode)
+        {
+            UpdatePoints(GetPoints(point, mode));
+            UpdateMode(mode);
+        }
 
     }
     public class StickPuzzles : Puzzles
@@ -687,5 +696,11 @@ namespace teris
                     };
             }
         }
+        public StickPuzzles(Point point, int mode)
+        {
+            UpdatePoints(GetPoints(point, mode));
+            UpdateMode(mode);
+        }
     }
+
 }
