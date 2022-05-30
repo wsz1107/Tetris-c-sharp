@@ -78,7 +78,7 @@ namespace teris
             {
                 for (int i = 0; i < NextBlock.points.Length; i++)
                 {
-                    e.Graphics.DrawRectangle(new Pen(BlockColor(NextBlock.colorIndex), BlockFrameWidth), NextBlock.points[i].X, NextBlock.points[i].Y, LengthOfCell, LengthOfCell);
+                    e.Graphics.DrawRectangle(new Pen(BlockColor(NextBlock.ColorIndex), BlockFrameWidth), NextBlock.points[i].X, NextBlock.points[i].Y, LengthOfCell, LengthOfCell);
                 }
             }
 
@@ -99,7 +99,7 @@ namespace teris
             {
                 for (int i = 0; i < CurrentBlock.points.Length; i++)
                 {
-                    e.Graphics.DrawRectangle(new Pen(BlockColor(CurrentBlock.colorIndex), BlockFrameWidth), CurrentBlock.points[i].X, CurrentBlock.points[i].Y, LengthOfCell, LengthOfCell);
+                    e.Graphics.DrawRectangle(new Pen(BlockColor(CurrentBlock.ColorIndex), BlockFrameWidth), CurrentBlock.points[i].X, CurrentBlock.points[i].Y, LengthOfCell, LengthOfCell);
                 }
             }
         }
@@ -110,13 +110,13 @@ namespace teris
             if (NextBlock == null)
             {
                 typeOfNextBlock = random.Next(7);
-                NextBlock = CreateFallingBlock(NextBlockPos, typeOfNextBlock);
+                NextBlock = CreateBlock(NextBlockPos, typeOfNextBlock);
             }
 
             //Pass the next block's type index to current puzzle if not exist. Then destroy the next block.  
             if (CurrentBlock == null)
             {
-                CurrentBlock = CreateFallingBlock(CurrentBlockPos, typeOfNextBlock);
+                CurrentBlock = CreateBlock(CurrentBlockPos, typeOfNextBlock);
                 NextBlock = null;
             }
 
@@ -126,25 +126,8 @@ namespace teris
                 GameOver();
             }
 
-            //Block falls
-            bool flag = true;
-            for (int i = 0; i < CurrentBlock.points.Length; i++)
-            {
-                if (CurrentBlock.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentBlock.points[i].Y / LengthOfCell + 1, CurrentBlock.points[i].X / LengthOfCell] != 0)
-                {
-                    AddStack();
-                    CurrentBlockPos = StartPos;
-                    CurrentBlock = null;
-                    CheckRow();
-                    flag = false;
-                    break;
-                }
-            }
-            if (flag)
-            {
-                CurrentBlockPos.Y += FallSpeed;
-                CurrentBlock.UpdatePoints(CurrentBlock.GetPoints(CurrentBlockPos, CurrentBlock.mode));
-            }
+            BlockFalls();
+
             pictureBox1.Invalidate();
         }
 
@@ -214,7 +197,7 @@ namespace teris
                 bool flag = true;
                 if (CurrentBlock.mode == 0)
                 {
-                    nextMode = CurrentBlock.modeMaxIndex;
+                    nextMode = CurrentBlock.ModeMaxIndex;
                 }
                 else
                 {
@@ -265,12 +248,34 @@ namespace teris
             }
         }
 
+        private void BlockFalls()
+        {
+            bool flag = true;
+            for (int i = 0; i < CurrentBlock.points.Length; i++)
+            {
+                if (CurrentBlock.points[i].Y + LengthOfCell >= bottomOfPlayboard || Cells[CurrentBlock.points[i].Y / LengthOfCell + 1, CurrentBlock.points[i].X / LengthOfCell] != 0)
+                {
+                    AddStack();
+                    CurrentBlockPos = StartPos;
+                    CurrentBlock = null;
+                    CheckRow();
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag)
+            {
+                CurrentBlockPos.Y += FallSpeed;
+                CurrentBlock.UpdatePoints(CurrentBlock.GetPoints(CurrentBlockPos, CurrentBlock.mode));
+            }
+        }
+
         //Add value to the cells where the falling block was to be
         private void AddStack()
         {
             for (int i = 0; i < CurrentBlock.points.Length; i++)
             {
-                Cells[CurrentBlock.points[i].Y / LengthOfCell, CurrentBlock.points[i].X / LengthOfCell] = CurrentBlock.colorIndex;
+                Cells[CurrentBlock.points[i].Y / LengthOfCell, CurrentBlock.points[i].X / LengthOfCell] = CurrentBlock.ColorIndex;
             }
         }
 
@@ -293,7 +298,6 @@ namespace teris
                     {
                         for (int l = 0; l < CellCountX; l++)
                         {
-                            Cells[k, l] = 0;
                             Cells[k, l] = Cells[k - 1, l];
                         }
                     }
@@ -309,7 +313,7 @@ namespace teris
                 UpdateScore();
             }
         }
-        private Block CreateFallingBlock(Point point, int ind)
+        private Block CreateBlock(Point point, int ind)
         {
             switch (ind)
             {
@@ -398,9 +402,9 @@ namespace teris
         public const int LengthOfCell = 20;
         public Point[] points;
         public int mode;
-        public abstract int modeMaxIndex { get; }
-        public abstract int colorIndex { get; }
-        public abstract Point[] GetPoints(Point _point, int _mode);
+        public abstract int ModeMaxIndex { get; }
+        public abstract int ColorIndex { get; }
+        public abstract Point[] GetPoints(Point point, int mode);
         public void UpdatePoints(Point[] points)
         {
             this.points = points;
@@ -412,8 +416,8 @@ namespace teris
     }
     public class OShapeBlock : Block
     {
-        public override int colorIndex { get { return 1; } }
-        public override int modeMaxIndex { get { return 0; } }
+        public override int ColorIndex { get { return 1; } }
+        public override int ModeMaxIndex { get { return 0; } }
         public override Point[] GetPoints(Point point, int mode)
         {
             return new Point[]
@@ -432,8 +436,8 @@ namespace teris
     }
     public class TShapeBlock : Block
     {
-        public override int colorIndex { get { return 2; } }
-        public override int modeMaxIndex { get { return 3; } }
+        public override int ColorIndex { get { return 2; } }
+        public override int ModeMaxIndex { get { return 3; } }
 
         public override Point[] GetPoints(Point point, int mode)
         {
@@ -489,8 +493,8 @@ namespace teris
     }
     public class ZShapeBlock : Block
     {
-        public override int colorIndex { get { return 3; } }
-        public override int modeMaxIndex { get { return 1; } }
+        public override int ColorIndex { get { return 3; } }
+        public override int ModeMaxIndex { get { return 1; } }
 
         public override Point[] GetPoints(Point point, int mode)
         {
@@ -530,8 +534,8 @@ namespace teris
     }
     public class SShapeBlock : Block
     {
-        public override int colorIndex {  get { return 4; } }
-        public override int modeMaxIndex { get { return 1; } }
+        public override int ColorIndex {  get { return 4; } }
+        public override int ModeMaxIndex { get { return 1; } }
 
         public override Point[] GetPoints(Point point, int mode)
         {
@@ -571,8 +575,8 @@ namespace teris
     }
     public class LShapeBlock : Block
     {
-        public override int colorIndex { get { return 5; } }
-        public override int modeMaxIndex { get { return 3; } }
+        public override int ColorIndex { get { return 5; } }
+        public override int ModeMaxIndex { get { return 3; } }
 
         public override Point[] GetPoints(Point point, int mode)
         {
@@ -628,8 +632,8 @@ namespace teris
     }
     public class JShapeBlock : Block
     {
-        public override int colorIndex { get { return 6; } }
-        public override int modeMaxIndex { get { return 3; } }
+        public override int ColorIndex { get { return 6; } }
+        public override int ModeMaxIndex { get { return 3; } }
 
         public override Point[] GetPoints(Point point, int mode)
         {
@@ -686,8 +690,8 @@ namespace teris
     }
     public class IShapeBlock : Block
     {
-        public override int colorIndex { get { return 7; } }
-        public override int modeMaxIndex { get { return 1; } }
+        public override int ColorIndex { get { return 7; } }
+        public override int ModeMaxIndex { get { return 1; } }
         public override Point[] GetPoints(Point point, int mode)
         {
             switch (mode)
