@@ -11,50 +11,65 @@ namespace tetris
         }
         public int X { get; set; }
         public int Y { get; set; }
-
+    }
+    public enum Directions
+    {
+        Right,
+        Left,
+        Down,
+        Up
+    }
+    public enum GridColors
+    {
+        NullColor,
+        Yellow,
+        Violet,
+        Red,
+        Green,
+        Orange,
+        Blue,
+        SkyBlue
     }
     public class TetrisModel
     {
         public Tetrimino CurrentTetrimino;
-        //public Tetrimino NextTetrimino;
+        public Tetrimino NextTetrimino;
 
         const int GridCountX = 10;
         const int GridCountY = 20;
         int[,] FallenGridMap = new int[GridCountY, GridCountX];
         int[,] FallingGridMap = new int[GridCountY, GridCountX];
 
+        public int Score = 0;
+        private const int ScorePerLine = 100;
+
         public PointCoordinate CurrentPos;
         public const int FallSpeed = 1;
+
+        public readonly int[,] DirectionCoordinate = new int[,] { { 1, 0 }, { -1, 0 }, { 0, 1 } };
 
         public readonly PointCoordinate StartPos = new PointCoordinate(5, 0);
 
         private readonly Random random = new Random();
         private int TetriminoType = 0;
 
+
+
         public void ReadyToFall()
         {
             TetriminoType = random.Next(7);
-            if (CurrentTetrimino == null)
+            if(NextTetrimino == null)
             {
                 CurrentPos = StartPos;
                 CreateTetrimino(CurrentPos.X, CurrentPos.Y, TetriminoType);
             }
+            if (CurrentTetrimino == null)
+            {
+                CurrentTetrimino = NextTetrimino;
+                NextTetrimino = null;
+            }
         }
 
-        public void CurrentTetriminoFallsDown()
-        {
-            int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X, CurrentPos.Y + FallSpeed, CurrentTetrimino.mode);
-            if (!IsCollidedWithBorders(nextLocations) && !IsCollidedWithGrid(nextLocations))
-            {
-                IntializeGridMap(FallingGridMap,CurrentTetrimino.points);
-                CurrentTetrimino.UpdatePoints(nextLocations);
-                UpdateGridMap(FallingGridMap);
-            }
-            else
-            {
-                UpdateGridMap(FallenGridMap);
-            }
-        }
 
         private void CreateTetrimino(int posX, int posY, int index)
         {
@@ -95,9 +110,9 @@ namespace tetris
         }
         private void IntializeGridMap(int[,] gridMap, int[][] oldLocations)
         {
-            for(int i = 0; i < oldLocations.Length; i++)
+            for (int i = 0; i < oldLocations.Length; i++)
             {
-                gridMap[oldLocations[i][1],oldLocations[i][0]] = 0;
+                gridMap[oldLocations[i][1], oldLocations[i][0]] = 0;
             }
         }
         private void UpdateGridMap(int[,] gridMap)
@@ -126,7 +141,7 @@ namespace tetris
             bool flag = false;
             for (int i = 0; i < locations.Length; i++)
             {
-                if (FallenGridMap[locations[i][1],locations[i][0]] != 0)
+                if (FallenGridMap[locations[i][1], locations[i][0]] != 0)
                 {
                     flag = true;
                     break;
@@ -134,11 +149,122 @@ namespace tetris
             }
             return flag;
         }
-
-        public void ControlTetrimino()
+        public bool IsGameOver(int[][] locations)
         {
+            bool flag = false;
+            for(int i = 0; i < locations.Length; i++)
+            {
+                if (IsCollidedWithGrid(locations))
+                {
+                    flag=true;
+                    break;
+                }
+            }
+            return flag;
+        }
+        public void CheckLines()
+        {
+            int combo = 0;
+            int ind = GridCountY - 1;
+            while(ind >= 0)
+            {
+                if (IsLineCompleted(ind))
+                {
+                    combo++;
+                    EraseAndPullDownLine(ind);
+                }
+                else
+                {
+                    ind--;
+                }
+            }
+            if(combo > 0)
+            {
+                Score += combo * combo * ScorePerLine;
+            }
+        }
+        private void EraseAndPullDownLine(int lineIndex)
+        {
+            for(int i = lineIndex; i > 0; i++)
+            {
+                for (int j = 0; j < GridCountX; j++)
+                {
+                    FallenGridMap[lineIndex, j] = FallenGridMap[lineIndex - 1, j];
+                }
+            }
+            
+        }
+        private bool IsLineCompleted(int lineIndex)
+        {
+            int res = 1;
+            for(int i = 0; i < GridCountX; i++)
+            {
+                res *= FallenGridMap[lineIndex, i];
+            }
+            if (res == 0) return false;
+            else return true;
+        }
+        public void ControlTetrimino(Directions direction)
+        {
+            if (direction != Directions.Up)
+            {
+                MoveCurrentTetrimino(direction);
+            }
+            if (direction == Directions.Up)
+            {
+                RotateCurrentTetrimino(direction);
+            }
 
         }
+        public void MoveCurrentTetrimino(Directions direction)
+        {
+            int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X + DirectionCoordinate[(int)direction, 0], CurrentPos.Y + DirectionCoordinate[(int)direction, 1], CurrentTetrimino.mode);
+            if (!IsCollidedWithBorders(nextLocations) && !IsCollidedWithGrid(nextLocations))
+            {
+                CurrentPos.X += DirectionCoordinate[(int)direction, 0];
+                CurrentPos.Y += DirectionCoordinate[(int)direction, 1];
+                IntializeGridMap(FallingGridMap, CurrentTetrimino.points);
+                CurrentTetrimino.UpdatePoints(nextLocations);
+                UpdateGridMap(FallingGridMap);
+            }
+            else
+            {
+                UpdateGridMap(FallenGridMap);
+            }
+        }
+
+        public void RotateCurrentTetrimino(Directions direction)
+        {
+            int rotateDirection = 0;
+            int nextMode = 0;
+            if (direction == Directions.Left)
+            {
+                rotateDirection = 1;
+            }
+            if (direction == Directions.Right)
+            {
+                rotateDirection = -1;
+            }
+            if (CurrentTetrimino.mode + rotateDirection < 0)
+            {
+                nextMode = CurrentTetrimino.ModeMaxIndex;
+            }
+            else if (CurrentTetrimino.mode + rotateDirection > CurrentTetrimino.ModeMaxIndex)
+            {
+                nextMode = 0;
+            }
+            else
+            {
+                nextMode += rotateDirection;
+            }
+            int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X,CurrentPos.Y, nextMode);
+            if(!IsCollidedWithBorders(nextLocations) && !IsCollidedWithGrid(nextLocations))
+            {
+                CurrentTetrimino.UpdateMode(nextMode);
+                CurrentTetrimino.UpdatePoints(nextLocations);
+            }
+        }
+
 
     }
     public abstract class Tetrimino
