@@ -3,14 +3,32 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using tetris;
 
 namespace teris
 {
     public partial class Form1 : Form
     {
+        TetrisModel tm = new TetrisModel();
+
+        private const int GridSize = 20;
+
+        private readonly int topOfPlayboard = 0;
+        private readonly int bottomOfPlayboard = CoordinateMapping(TetrisModel.GridCountY);
+        private readonly int leftOfPlayboard = 0;
+        private readonly int rightOfPlayboard = CoordinateMapping(TetrisModel.GridCountX);
+
+        private readonly Point StartPos=new Point(CoordinateMapping(TetrisModel.GridCountY), CoordinateMapping(TetrisModel.GridCountY));
+        private readonly Point NextTetrisPos = new Point(230, 150);
+
+        private List<string> keying = new List<string>();
+
+        
+
+
+
+        ///old code
         private Point CurrentBlockPos;
-        private readonly Point StartPos = new Point(100, 40);
-        private readonly Point NextBlockPos = new Point(230, 150);
         private Block CurrentBlock;
         private Block NextBlock;
 
@@ -21,13 +39,6 @@ namespace teris
         private int[,] Cells;//Save the colorIndex of fallen puzzles
         private const int CellCountX = 10;
         private const int CellCountY = 20;
-
-        private List<string> keying = new List<string>();
-
-        private const int topOfPlayboard = 0;
-        private const int bottomOfPlayboard = LengthOfCell * CellCountY;
-        private const int leftOfPlayboard = 0;
-        private const int rightOfPlayboard = LengthOfCell * CellCountX;
 
         private Random random = new Random();
         private int typeOfNextBlock = 0;
@@ -41,30 +52,37 @@ namespace teris
         private void ResetGame()
         {
             //Clear the screen
-            if (CurrentBlock != null)
+            if (tm.CurrentTetrimino != null)
             {
-                CurrentBlock = null;
+                tm.CurrentTetrimino = null;
             }
             button1.Visible = false;
             button1.Enabled = false;
             label2.Visible = false;
 
             //Intialize color of cells
-            Cells = new int[CellCountY, CellCountX];
-            for (int i = 0; i < CellCountY; i++)
-            {
-                for (int j = 0; j < CellCountX; j++)
-                {
-                    Cells[i, j] = 0;
-                }
-            }
+            tm.IntializeGridMap(tm.FallingGridMap);
+            tm.IntializeGridMap(tm.FallenGridMap);
 
-            //Start new game
-            CurrentBlockPos = StartPos;
-            score = 0;
+            tm.Score = 0;
+            UpdateScore(tm.Score);
+
             timer1.Enabled = true;
             timer2.Enabled = true;
-            UpdateScore();
+            
+
+            //Cells = new int[CellCountY, CellCountX];
+            //for (int i = 0; i < CellCountY; i++)
+            //{
+            //    for (int j = 0; j < CellCountX; j++)
+            //    {
+            //        Cells[i, j] = 0;
+            //    }
+            //}
+
+            //Start new game
+            //CurrentBlockPos = StartPos;
+            //score = 0;
         }
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
@@ -74,60 +92,49 @@ namespace teris
             e.Graphics.DrawLine(playboardFramePen, rightOfPlayboard, topOfPlayboard, rightOfPlayboard, bottomOfPlayboard);
 
             //Draw next block
-            if (NextBlock != null)
+            if (tm.NextTetrimino != null)
             {
-                for (int i = 0; i < NextBlock.points.Length; i++)
+                for (int i = 0; i < tm.NextTetrimino.points.Length; i++)
                 {
-                    e.Graphics.DrawRectangle(new Pen(BlockColor(NextBlock.ColorIndex), BlockFrameWidth), NextBlock.points[i].X, NextBlock.points[i].Y, LengthOfCell, LengthOfCell);
+                    e.Graphics.DrawRectangle(new Pen(BlockColor(tm.NextTetrimino.ColorIndex), BlockFrameWidth), NextTetrisPos.X, NextTetrisPos.Y, GridSize, GridSize);
                 }
             }
 
-            //Draw stack
-            for (int i = 0; i < CellCountY; i++)
+            //Draw stack and falling block
+            for (int i = 0; i < TetrisModel.GridCountY; i++)
             {
-                for (int j = 0; j < CellCountX; j++)
+                for (int j = 0; j < TetrisModel.GridCountX; j++)
                 {
-                    if (Cells[i, j] != 0)
+                    if (tm.FallenGridMap[i, j] != 0)
                     {
-                        e.Graphics.FillRectangle(BlockColor(Cells[i, j]), j * LengthOfCell, i * LengthOfCell, LengthOfCell, LengthOfCell);
+                        e.Graphics.FillRectangle(BlockColor(tm.FallenGridMap[i, j]), CoordinateMapping(i), CoordinateMapping(j), GridSize, GridSize);
+                    }
+                    if(tm.FallingGridMap[i,j] != 0)
+                    {
+                        e.Graphics.DrawRectangle(new Pen(BlockColor(tm.FallenGridMap[i, j])), CoordinateMapping(i), CoordinateMapping(j), GridSize, GridSize);
                     }
                 }
             }
 
-            //Draw falling block
-            if (CurrentBlock != null)
-            {
-                for (int i = 0; i < CurrentBlock.points.Length; i++)
-                {
-                    e.Graphics.DrawRectangle(new Pen(BlockColor(CurrentBlock.ColorIndex), BlockFrameWidth), CurrentBlock.points[i].X, CurrentBlock.points[i].Y, LengthOfCell, LengthOfCell);
-                }
-            }
+            //old Draw falling block code
+            //if (CurrentBlock != null)
+            //{
+            //    for (int i = 0; i < CurrentBlock.points.Length; i++)
+            //    {
+            //        e.Graphics.DrawRectangle(new Pen(BlockColor(CurrentBlock.ColorIndex), BlockFrameWidth), CurrentBlock.points[i].X, CurrentBlock.points[i].Y, LengthOfCell, LengthOfCell);
+            //    }
+            //}
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            //Create next block if not exist
-            if (NextBlock == null)
-            {
-                typeOfNextBlock = random.Next(7);
-                NextBlock = CreateBlock(NextBlockPos, typeOfNextBlock);
-            }
+            tm.ReadyToFall();
 
-            //Pass the next block's type index to current puzzle if not exist. Then destroy the next block.  
-            if (CurrentBlock == null)
-            {
-                CurrentBlock = CreateBlock(CurrentBlockPos, typeOfNextBlock);
-                NextBlock = null;
-            }
-
-
-            if (IsGameOver())
+            if (tm.IsGameOver(tm.CurrentTetrimino.points))
             {
                 GameOver();
             }
-
-            BlockFalls();
-
+            tm.MoveCurrentTetrimino(Directions.Down);
             pictureBox1.Invalidate();
         }
 
@@ -310,7 +317,7 @@ namespace teris
             if (combo != 0)
             {
                 score += (combo * combo) * scorePerRow;
-                UpdateScore();
+                UpdateScore(tm.Score);
             }
         }
         private Block CreateBlock(Point point, int ind)
@@ -374,9 +381,9 @@ namespace teris
         {
             ResetGame();
         }
-        private void UpdateScore()
+        private void UpdateScore(int currentScore)
         {
-            label1.Text = "Score:\n" + score;
+            label1.Text = "Score:\n" + currentScore;
         }
         private bool IsGameOver()
         {
@@ -395,6 +402,10 @@ namespace teris
             timer2.Enabled = false;
             button1.Visible = true;
             button1.Enabled = true;
+        }
+        private static int CoordinateMapping(int gridCordinate)
+        {
+            return gridCordinate * GridSize;
         }
     }
     public abstract class Block

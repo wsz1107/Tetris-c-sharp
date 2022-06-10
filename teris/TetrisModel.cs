@@ -35,10 +35,10 @@ namespace tetris
         public Tetrimino CurrentTetrimino;
         public Tetrimino NextTetrimino;
 
-        const int GridCountX = 10;
-        const int GridCountY = 20;
-        int[,] FallenGridMap = new int[GridCountY, GridCountX];
-        int[,] FallingGridMap = new int[GridCountY, GridCountX];
+        public const int GridCountX = 10;
+        public const int GridCountY = 20;
+        public int[,] FallenGridMap = new int[GridCountY, GridCountX];
+        public int[,] FallingGridMap = new int[GridCountY, GridCountX];
 
         public int Score = 0;
         private const int ScorePerLine = 100;
@@ -48,7 +48,7 @@ namespace tetris
 
         public readonly int[,] DirectionCoordinate = new int[,] { { 1, 0 }, { -1, 0 }, { 0, 1 } };
 
-        public readonly PointCoordinate StartPos = new PointCoordinate(5, 0);
+        public static readonly PointCoordinate StartPos = new PointCoordinate(5, 2);
 
         private readonly Random random = new Random();
         private int TetriminoType = 0;
@@ -58,57 +58,47 @@ namespace tetris
         public void ReadyToFall()
         {
             TetriminoType = random.Next(7);
-            if(NextTetrimino == null)
+            if (NextTetrimino == null)
             {
-                CurrentPos = StartPos;
-                CreateTetrimino(CurrentPos.X, CurrentPos.Y, TetriminoType);
+                NextTetrimino = CreateTetrimino(TetriminoType);
             }
             if (CurrentTetrimino == null)
             {
+                CurrentPos = StartPos;
                 CurrentTetrimino = NextTetrimino;
+                CurrentTetrimino.UpdatePoints(CurrentTetrimino.GetPoints(CurrentPos.X, CurrentPos.Y, CurrentTetrimino.Mode));
                 NextTetrimino = null;
             }
         }
 
 
-        private void CreateTetrimino(int posX, int posY, int index)
+        private Tetrimino CreateTetrimino(int index)
         {
-            if (CurrentTetrimino == null)
+            switch (index)
             {
-                switch (index)
-                {
-                    case 0:
-                        CurrentTetrimino = new OShapeTetrimino(posX, posY, -1);
-                        break;
-                    case 1:
-                        CurrentTetrimino = new TShapeTetrimino(posX, posY, 0);
-                        break;
-                    case 2:
-                        CurrentTetrimino = new ZShapeTetrimino(posX, posY, 0);
-                        break;
-                    case 3:
-                        CurrentTetrimino = new SShapeTetrimino(posX, posY, 0);
-                        break;
-                    case 4:
-                        CurrentTetrimino = new LShapeTetrimino(posX, posY, 0);
-                        break;
-                    case 5:
-                        CurrentTetrimino = new JShapeTetrimino(posX, posY, 0);
-                        break;
-                    case 6:
-                        CurrentTetrimino = new IShapeTetrimino(posX, posY, 0);
-                        break;
-                    default:
-                        CurrentTetrimino = null;
-                        break;
-                }
+                case 0:
+                    return new OShapeTetrimino();
+                case 1:
+                    return new TShapeTetrimino();
+                case 2:
+                    return new ZShapeTetrimino();
+                case 3:
+                    return new SShapeTetrimino();
+                case 4:
+                    return new LShapeTetrimino();
+                case 5:
+                    return new JShapeTetrimino();
+                case 6:
+                    return new IShapeTetrimino();
+                default:
+                    return null;
             }
         }
-        private void IntializeGridMap(int[,] gridMap)
+        public void IntializeGridMap(int[,] gridMap)
         {
             gridMap = new int[GridCountY, GridCountX];
         }
-        private void IntializeGridMap(int[,] gridMap, int[][] oldLocations)
+        public void IntializeGridMap(int[,] gridMap, int[][] oldLocations)
         {
             for (int i = 0; i < oldLocations.Length; i++)
             {
@@ -152,11 +142,11 @@ namespace tetris
         public bool IsGameOver(int[][] locations)
         {
             bool flag = false;
-            for(int i = 0; i < locations.Length; i++)
+            for (int i = 0; i < locations.Length; i++)
             {
                 if (IsCollidedWithGrid(locations))
                 {
-                    flag=true;
+                    flag = true;
                     break;
                 }
             }
@@ -166,7 +156,7 @@ namespace tetris
         {
             int combo = 0;
             int ind = GridCountY - 1;
-            while(ind >= 0)
+            while (ind >= 0)
             {
                 if (IsLineCompleted(ind))
                 {
@@ -178,26 +168,26 @@ namespace tetris
                     ind--;
                 }
             }
-            if(combo > 0)
+            if (combo > 0)
             {
                 Score += combo * combo * ScorePerLine;
             }
         }
         private void EraseAndPullDownLine(int lineIndex)
         {
-            for(int i = lineIndex; i > 0; i++)
+            for (int i = lineIndex; i > 0; i++)
             {
                 for (int j = 0; j < GridCountX; j++)
                 {
                     FallenGridMap[lineIndex, j] = FallenGridMap[lineIndex - 1, j];
                 }
             }
-            
+
         }
         private bool IsLineCompleted(int lineIndex)
         {
             int res = 1;
-            for(int i = 0; i < GridCountX; i++)
+            for (int i = 0; i < GridCountX; i++)
             {
                 res *= FallenGridMap[lineIndex, i];
             }
@@ -218,7 +208,7 @@ namespace tetris
         }
         public void MoveCurrentTetrimino(Directions direction)
         {
-            int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X + DirectionCoordinate[(int)direction, 0], CurrentPos.Y + DirectionCoordinate[(int)direction, 1], CurrentTetrimino.mode);
+            int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X + DirectionCoordinate[(int)direction, 0], CurrentPos.Y + DirectionCoordinate[(int)direction, 1], CurrentTetrimino.Mode);
             if (!IsCollidedWithBorders(nextLocations) && !IsCollidedWithGrid(nextLocations))
             {
                 CurrentPos.X += DirectionCoordinate[(int)direction, 0];
@@ -245,11 +235,11 @@ namespace tetris
             {
                 rotateDirection = -1;
             }
-            if (CurrentTetrimino.mode + rotateDirection < 0)
+            if (CurrentTetrimino.Mode + rotateDirection < 0)
             {
                 nextMode = CurrentTetrimino.ModeMaxIndex;
             }
-            else if (CurrentTetrimino.mode + rotateDirection > CurrentTetrimino.ModeMaxIndex)
+            else if (CurrentTetrimino.Mode + rotateDirection > CurrentTetrimino.ModeMaxIndex)
             {
                 nextMode = 0;
             }
@@ -257,8 +247,8 @@ namespace tetris
             {
                 nextMode += rotateDirection;
             }
-            int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X,CurrentPos.Y, nextMode);
-            if(!IsCollidedWithBorders(nextLocations) && !IsCollidedWithGrid(nextLocations))
+            int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X, CurrentPos.Y, nextMode);
+            if (!IsCollidedWithBorders(nextLocations) && !IsCollidedWithGrid(nextLocations))
             {
                 CurrentTetrimino.UpdateMode(nextMode);
                 CurrentTetrimino.UpdatePoints(nextLocations);
@@ -269,7 +259,7 @@ namespace tetris
     }
     public abstract class Tetrimino
     {
-        public int mode;
+        public abstract int Mode { get; set; }
         public abstract int ModeMaxIndex { get; }
         public abstract int ColorIndex { get; }
 
@@ -281,13 +271,14 @@ namespace tetris
         }
         public void UpdateMode(int newMode)
         {
-            this.mode = newMode;
+            this.Mode = newMode;
         }
     }
     public class OShapeTetrimino : Tetrimino
     {
         public override int ColorIndex => 1;
         public override int ModeMaxIndex => 0;
+        public override int Mode { get => this.Mode; set => this.Mode = -1; }
 
         public override int[][] GetPoints(int pivotX, int pivotY, int mode)
         {
@@ -299,16 +290,13 @@ namespace tetris
                 new int[2]{pivotX+1,pivotY+1}
             };
         }
-        public OShapeTetrimino(int pivotX, int pivotY, int mode)
-        {
-            UpdatePoints(GetPoints(pivotX, pivotY, mode));
-            UpdateMode(mode);
-        }
     }
     public class TShapeTetrimino : Tetrimino
     {
         public override int ColorIndex => 2;
         public override int ModeMaxIndex => 3;
+        public override int Mode { get => this.Mode; set => this.Mode = 0; }
+
 
         public override int[][] GetPoints(int pivotX, int pivotY, int mode)
         {
@@ -350,17 +338,13 @@ namespace tetris
                     return null;
             }
         }
-        public TShapeTetrimino(int x, int y, int mode)
-        {
-            UpdatePoints(GetPoints(x, y, mode));
-            UpdateMode(mode);
-        }
-
     }
     public class ZShapeTetrimino : Tetrimino
     {
         public override int ColorIndex => 3;
         public override int ModeMaxIndex => 1;
+        public override int Mode { get => this.Mode; set => this.Mode = 0; }
+
         public override int[][] GetPoints(int pivotX, int pivotY, int mode)
         {
             switch (mode)
@@ -385,17 +369,13 @@ namespace tetris
                     return null;
             }
         }
-        public ZShapeTetrimino(int x, int y, int mode)
-        {
-            UpdatePoints(GetPoints(x, y, mode));
-            UpdateMode(mode);
-        }
-
     }
     public class SShapeTetrimino : Tetrimino
     {
         public override int ColorIndex => 4;
         public override int ModeMaxIndex => 1;
+        public override int Mode { get => this.Mode; set => this.Mode = 0; }
+
         public override int[][] GetPoints(int pivotX, int pivotY, int mode)
         {
             switch (mode)
@@ -420,17 +400,12 @@ namespace tetris
                     return null;
             }
         }
-        public SShapeTetrimino(int x, int y, int mode)
-        {
-            UpdatePoints(GetPoints(x, y, mode));
-            UpdateMode(mode);
-        }
-
     }
     public class LShapeTetrimino : Tetrimino
     {
         public override int ColorIndex => 5;
         public override int ModeMaxIndex => 3;
+        public override int Mode { get => this.Mode; set => this.Mode = 0; }
         public override int[][] GetPoints(int pivotX, int pivotY, int mode)
         {
             switch (mode)
@@ -471,17 +446,12 @@ namespace tetris
                     return null;
             }
         }
-        public LShapeTetrimino(int x, int y, int mode)
-        {
-            UpdatePoints(GetPoints(x, y, mode));
-            UpdateMode(mode);
-        }
-
     }
     public class JShapeTetrimino : Tetrimino
     {
         public override int ColorIndex => 6;
         public override int ModeMaxIndex => 3;
+        public override int Mode { get => this.Mode; set => this.Mode = 0; }
         public override int[][] GetPoints(int pivotX, int pivotY, int mode)
         {
             switch (mode)
@@ -522,17 +492,12 @@ namespace tetris
                     return null;
             }
         }
-        public JShapeTetrimino(int x, int y, int mode)
-        {
-            UpdatePoints(GetPoints(x, y, mode));
-            UpdateMode(mode);
-        }
-
     }
     public class IShapeTetrimino : Tetrimino
     {
         public override int ColorIndex => 7;
         public override int ModeMaxIndex => 1;
+        public override int Mode { get => this.Mode; set => this.Mode = 0; }
         public override int[][] GetPoints(int pivotX, int pivotY, int mode)
         {
             switch (mode)
@@ -556,11 +521,6 @@ namespace tetris
                 default:
                     return null;
             }
-        }
-        public IShapeTetrimino(int x, int y, int mode)
-        {
-            UpdatePoints(GetPoints(x, y, mode));
-            UpdateMode(mode);
         }
     }
 }
