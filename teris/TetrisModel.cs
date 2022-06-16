@@ -60,7 +60,7 @@ namespace tetris
         public void ReadyToFall()
         {
             TetriminoType = random.Next(7);
-            int testTetriminoType = 0;
+            int testTetriminoType = 1;
             if (NextTetrimino == null)
             {
                 NextTetrimino = CreateTetrimino(testTetriminoType);
@@ -186,13 +186,9 @@ namespace tetris
         {
             for (int i = lineIndex; i > 0; i--)
             {
-                if (lineIndex == 19 || lineIndex ==18)
-                {
-                    printGridMapVal(FallenGridMap);
-                }
                 for (int j = 0; j < GridCountX; j++)
                 {
-                    FallenGridMap[lineIndex, j] = FallenGridMap[lineIndex - 1, j];
+                    FallenGridMap[i, j] = FallenGridMap[i - 1, j];
                 }
                 
             }
@@ -237,6 +233,7 @@ namespace tetris
                 {
                     UpdateGridMap(FallenGridMap);
                     CurrentTetrimino = null;
+                    IntializeGridMap(FallingGridMap);
                     CheckLines();
                 }
             }

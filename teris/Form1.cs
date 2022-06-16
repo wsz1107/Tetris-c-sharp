@@ -21,7 +21,7 @@ namespace teris
         private const int widthOfPlayboardFrame = 3;
 
 
-        private readonly Point NextTetrisPos = new Point(230, 150);
+        private readonly Point NextTetrisPos = new Point(12, 7);
 
         private List<string> keying = new List<string>();
 
@@ -72,7 +72,7 @@ namespace teris
                 int[][] nextTetriminoPointsLocations = tm.NextTetrimino.GetPoints(NextTetrisPos.X, NextTetrisPos.Y, tm.NextTetrimino.Mode);
                 for (int i = 0; i < nextTetriminoPointsLocations.Length; i++)
                 {
-                    e.Graphics.DrawRectangle(new Pen(BlockColor(tm.NextTetrimino.ColorIndex), BlockFrameWidth), nextTetriminoPointsLocations[i][0], nextTetriminoPointsLocations[i][1], GridSize, GridSize);
+                    e.Graphics.DrawRectangle(new Pen(BlockColor(tm.NextTetrimino.ColorIndex), BlockFrameWidth), CoordinateMapping(nextTetriminoPointsLocations[i][0]), CoordinateMapping(nextTetriminoPointsLocations[i][1]), GridSize, GridSize);
                 }
             }
 
@@ -103,6 +103,7 @@ namespace teris
                 //Debug.WriteLine(tm.CurrentPos.X.ToString()+", "+ tm.CurrentPos.Y.ToString());
             }
             tm.ControlTetrimino(Directions.Down);
+            UpdateScore(tm.Score);
             pictureBox1.Invalidate();
         }
 
