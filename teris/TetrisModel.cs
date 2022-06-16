@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using tetris;
 
 namespace tetris
 {
@@ -60,16 +59,16 @@ namespace tetris
         public void ReadyToFall()
         {
             TetriminoType = random.Next(7);
-            int testTetriminoType = 1;
             if (NextTetrimino == null)
             {
-                NextTetrimino = CreateTetrimino(testTetriminoType);
+                NextTetrimino = CreateTetrimino(TetriminoType);
             }
             if (CurrentTetrimino == null)
             {
                 CurrentPos = StartPos;
                 CurrentTetrimino = NextTetrimino;
                 CurrentTetrimino.UpdatePoints(CurrentTetrimino.GetPoints(CurrentPos.X, CurrentPos.Y, CurrentTetrimino.Mode));
+                UpdateGridMap(FallingGridMap);
                 NextTetrimino = null;
             }
         }
@@ -212,7 +211,7 @@ namespace tetris
             }
             if (direction == Directions.Up)
             {
-                RotateCurrentTetrimino(direction);
+                RotateCurrentTetrimino(Directions.Right);
             }
 
         }
@@ -261,13 +260,16 @@ namespace tetris
             }
             else
             {
-                nextMode += rotateDirection;
+                nextMode += CurrentTetrimino.Mode + rotateDirection;
             }
             int[][] nextLocations = CurrentTetrimino.GetPoints(CurrentPos.X, CurrentPos.Y, nextMode);
+            Debug.WriteLine(nextMode);
             if (!IsCollidedWithBorders(nextLocations) && !IsCollidedWithGrid(nextLocations))
             {
+                IntializeGridMap(FallingGridMap);
                 CurrentTetrimino.UpdateMode(nextMode);
                 CurrentTetrimino.UpdatePoints(nextLocations);
+                UpdateGridMap(FallingGridMap);
             }
         }
         private static void printGridMapVal(int[,] gridMap)

@@ -96,7 +96,7 @@ namespace teris
         private void timer1_Tick(object sender, EventArgs e)
         {
             tm.ReadyToFall();
-            //printGridMapVal(tm.FallenGridMap);
+            //printGridMapVal(tm.FallingGridMap);
             if (tm.IsGameOver(tm.CurrentTetrimino.points))
             {
                 GameOver();
